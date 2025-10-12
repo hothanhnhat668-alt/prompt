@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prompt 搜索数据库</title>
+    <!-- 引入 Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 设置 Tailwind 样式配置 -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        'primary': '#4f46e5',
+                        'secondary': '#8b5cf6',
+                        'bg-dark': '#1f2937',
+                        'card-light': '#374151',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* 引入 Inter 字体 */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+        
+        body {
+            background-color: #f3f4f6;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            padding: 2rem 1rem;
+        }
+
+        /* 滚动条美化 */
+        .custom-scroll::-webkit-scrollbar {
+            width: 8px;
+        }
+        .custom-scroll::-webkit-scrollbar-thumb {
+            background-color: #9ca3af;
+            border-radius: 4px;
+        }
+        .custom-scroll::-webkit-scrollbar-track {
+            background-color: #e5e7eb;
+        }
+
+        /* 响应式卡片网格 */
+        #prompt-list-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1rem;
+        }
+
+        /* 调整输入框和按钮的焦点样式 */
+        input:focus, textarea:focus, button:focus {
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.4); /* primary color glow */
+        }
+
+        /* Modal 样式 */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.6);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+        }
+        .modal-content {
+            background-color: white;
+            padding: 1.5rem 2rem;
+            border-radius: 1rem;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+            width: 90%;
+            max-width: 400px;
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+
+    <div id="app-container" class="w-full max-w-5xl space-y-8">
+        <h1 class="text-4xl font-bold text-center text-gray-800 mb-6">我的 Prompt 知识库</h1>
+        
+        <div class="flex flex-col sm:flex-row justify-center items-center space-y-3 sm:space-y-0 sm:space-x-4">
+            <p id="user-info" class="text-center text-sm text-gray-600">正在加载用户...</p>
+            <button id="auth-button" class="py-2 px-4 bg-secondary text-white font-semibold rounded-xl hover:bg-purple-700 transition duration-300 shadow-md text-sm">
+                登录 / 注册
+            </button>
+        </div>
+
+        <div id="error-message" class="hidden bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-xl mb-4" role="alert">
+            <strong class="font-bold">错误:</strong>
+            <span class="block sm:inline" id="error-text"></span>
+        </div>
+
+        <!-- 1. 添加 Prompt 表单 -->
+        <div class="bg-white p-6 md:p-8 shadow-xl rounded-2xl border border-gray-200">
+            <h2 class="text-2xl font-semibold text-gray-700 mb-4">添加新的 Prompt</h2>
+            <form id="add-prompt-form" class="space-y-4">
+                <div>
+                    <label for="prompt-title" class="block text-sm font-medium text-gray-700 mb-1">标题 (例如: 电影推荐, 简历优化)</label>
+                    <input type="text" id="prompt-title" required 
+                           class="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-primary focus:border-primary transition duration-150"
+                           placeholder="输入简短的标题">
+                </div>
+                <div>
+                    <label for="prompt-content" class="block text-sm font-medium text-gray-700 mb-1">Prompt 内容</label>
+                    <textarea id="prompt-content" rows="4" required 
+                              class="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-primary focus:border-primary transition duration-150"
+                              placeholder="输入完整的 Prompt 文本..."></textarea>
+                </div>
+                <button type="submit" id="add-prompt-btn"
+                        class="w-full py-2 px-4 bg-primary text-white font-semibold rounded-xl hover:bg-indigo-700 transition duration-300 shadow-md">
+                    <span id="btn-text">保存 Prompt</span>
+                    <span id="btn-loading" class="hidden">保存中...</span>
+                </button>
+            </form>
+        </div>
+
+        <!-- 2. 搜索和列表区域 -->
+        <div class="space-y-6">
+            <div class="bg-white p-6 md:p-8 shadow-xl rounded-2xl border border-gray-200">
+                <h2 class="text-2xl font-semibold text-gray-700 mb-4">搜索 Prompt</h2>
+                <input type="text" id="search-input" placeholder="输入关键词搜索 (标题或内容)..." 
+                       class="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-primary focus:border-primary transition duration-150">
+            </div>
+
+            <div id="prompt-list-container" class="min-h-[200px] flex justify-center items-center">
+                <!-- Prompts will be rendered here -->
+                <p id="loading-indicator" class="text-gray-500">加载中...</p>
+            </div>
+            <p id="no-results" class="hidden text-center text-gray-500 mt-4">没有找到匹配的 Prompt。</p>
+        </div>
+    </div>
+
+    <!-- 3. 登录/注册 模态框 -->
+    <div id="auth-modal" class="modal hidden">
+        <div class="modal-content">
+            <h2 id="modal-title" class="text-2xl font-semibold text-gray-700 mb-4 text-center">用户登录</h2>
+            <form id="auth-form" class="space-y-4">
+                <div>
+                    <label for="email" class="block text-sm font-medium text-gray-700 mb-1">邮箱地址</label>
+                    <input type="email" id="email" required 
+                           class="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-primary focus:border-primary transition duration-150"
+                           placeholder="输入邮箱">
+                </div>
+                <div>
+                    <label for="password" class="block text-sm font-medium text-gray-700 mb-1">密码</label>
+                    <input type="password" id="password" required 
+                           class="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-primary focus:border-primary transition duration-150"
+                           placeholder="输入密码 (至少6位)">
+                </div>
+                <button type="submit" id="modal-submit-btn"
+                        class="w-full py-2 px-4 bg-primary text-white font-semibold rounded-xl hover:bg-indigo-700 transition duration-300 shadow-md">
+                    登录
+                </button>
+            </form>
+            <button id="toggle-mode-btn" class="w-full mt-3 text-sm text-primary hover:text-indigo-700 transition duration-150 font-medium">
+                切换到注册模式
+            </button>
+            <button id="close-modal-btn" class="absolute top-3 right-3 text-gray-500 hover:text-gray-800">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+        </div>
+    </div>
+
+    <!-- Firebase 模块导入 -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { 
+            getAuth, 
+            signInAnonymously, 
+            signInWithCustomToken, 
+            onAuthStateChanged, 
+            signOut,
+            createUserWithEmailAndPassword, // 引入注册
+            signInWithEmailAndPassword      // 引入登录
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { 
+            getFirestore, 
+            collection, 
+            addDoc, 
+            query, 
+            onSnapshot,
+            serverTimestamp,
+            setLogLevel,
+            doc,          
+            deleteDoc     
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // 启用 Firestore 调试日志
+        setLogLevel('Debug');
+
+        // --- 全局变量和初始化 ---
+        let db;
+        let auth;
+        let userId = null;
+        let userName = '匿名用户';
+        let isEmailSignedIn = false;
+        let authMode = 'login'; // 'login' or 'register'
+        let allPrompts = []; 
+
+        // !!! 请替换下面的 YOUR_FIREBASE_CONFIG 为您的真实配置 !!!
+        const YOUR_FIREBASE_CONFIG = {
+            apiKey: "AIzaSyBePfEThajXkfixYc-oUl9m8htKcXRuuI8",
+  authDomain: "prompt-29d34.firebaseapp.com",
+  projectId: "prompt-29d34",
+  storageBucket: "prompt-29d34.firebasestorage.app",
+  messagingSenderId: "2282413195",
+  appId: "1:2282413195:web:1ecae5e1a116be239b488e",
+  measurementId: "G-R7TW7M0L5M"
+        };
+
+        const appId = "default-standalone-app"; 
+        
+        // 兼容 Canvas 运行时和外部部署
+        const firebaseConfig = typeof __firebase_config !== 'undefined' && Object.keys(JSON.parse(__firebase_config)).length > 0
+            ? JSON.parse(__firebase_config)
+            : YOUR_FIREBASE_CONFIG; 
+
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        
+        const errorEl = document.getElementById('error-message');
+        const errorTextEl = document.getElementById('error-text');
+        const userInfoEl = document.getElementById('user-info');
+        const loadingIndicatorEl = document.getElementById('loading-indicator');
+        const noResultsEl = document.getElementById('no-results');
+        const promptListContainer = document.getElementById('prompt-list-container');
+        const addPromptForm = document.getElementById('add-prompt-form');
+        const addPromptBtn = document.getElementById('add-prompt-btn');
+        const btnText = document.getElementById('btn-text');
+        const btnLoading = document.getElementById('btn-loading');
+        const searchInput = document.getElementById('search-input');
+        const authButton = document.getElementById('auth-button');
+
+        // 模态框元素
+        const authModal = document.getElementById('auth-modal');
+        const modalTitle = document.getElementById('modal-title');
+        const authForm = document.getElementById('auth-form');
+        const modalSubmitBtn = document.getElementById('modal-submit-btn');
+        const toggleModeBtn = document.getElementById('toggle-mode-btn');
+        const closeModalBtn = document.getElementById('close-modal-btn');
+        const emailInput = document.getElementById('email');
+        const passwordInput = document.getElementById('password');
+
+        /**
+         * 显示错误信息
+         * @param {string} message 
+         */
+        function showError(message) {
+            errorTextEl.textContent = message;
+            errorEl.classList.remove('hidden');
+            loadingIndicatorEl.textContent = '加载失败。';
+        }
+
+        /**
+         * 切换登录/注册模式
+         */
+        function toggleAuthMode() {
+            authMode = authMode === 'login' ? 'register' : 'login';
+            if (authMode === 'login') {
+                modalTitle.textContent = '用户登录';
+                modalSubmitBtn.textContent = '登录';
+                toggleModeBtn.textContent = '切换到注册模式';
+            } else {
+                modalTitle.textContent = '用户注册';
+                modalSubmitBtn.textContent = '注册';
+                toggleModeBtn.textContent = '切换到登录模式';
+            }
+        }
+
+        /**
+         * 处理登录/注册表单提交
+         * @param {Event} e 
+         */
+        async function handleAuthSubmit(e) {
+            e.preventDefault();
+            const email = emailInput.value;
+            const password = passwordInput.value;
+
+            if (password.length < 6) {
+                showError("密码长度必须至少为6位。");
+                return;
+            }
+
+            modalSubmitBtn.disabled = true;
+            modalSubmitBtn.textContent = authMode === 'login' ? '登录中...' : '注册中...';
+            errorEl.classList.add('hidden'); // 隐藏通用错误，等待认证错误
+
+            try {
+                if (authMode === 'register') {
+                    // 注册
+                    await createUserWithEmailAndPassword(auth, email, password);
+                } else {
+                    // 登录
+                    await signInWithEmailAndPassword(auth, email, password);
+                }
+                
+                // 成功后关闭模态框
+                authModal.classList.add('hidden');
+                authForm.reset();
+            } catch (error) {
+                let errorMessage = '认证失败：';
+                switch (error.code) {
+                    case 'auth/invalid-email':
+                        errorMessage += '邮箱格式无效。'; break;
+                    case 'auth/user-disabled':
+                        errorMessage += '此用户已被禁用。'; break;
+                    case 'auth/user-not-found':
+                    case 'auth/wrong-password':
+                        errorMessage += '邮箱或密码错误。'; break;
+                    case 'auth/email-already-in-use':
+                        errorMessage += '该邮箱已被注册。请切换到登录模式。'; break;
+                    default:
+                        errorMessage += error.message;
+                }
+                showError(errorMessage);
+            } finally {
+                modalSubmitBtn.disabled = false;
+                modalSubmitBtn.textContent = authMode === 'login' ? '登录' : '注册';
+            }
+        }
+
+        /**
+         * 处理退出登录
+         */
+        async function handleSignOut() {
+            if (!auth) return;
+            try {
+                await signOut(auth);
+                // 退出后自动转为匿名登录，这样用户仍能使用应用
+                await signInAnonymously(auth);
+                // onAuthStateChanged 会处理后续更新
+            } catch (error) {
+                console.error("退出登录失败:", error);
+                showError("退出登录失败: " + error.message);
+            }
+        }
+
+        /**
+         * 更新认证按钮和用户信息 UI
+         */
+        function updateAuthUI() {
+            if (isEmailSignedIn) {
+                // 已通过邮箱登录
+                authButton.textContent = `退出登录 (${userName})`;
+                authButton.onclick = handleSignOut;
+                authButton.classList.remove('bg-secondary');
+                authButton.classList.add('bg-red-500', 'hover:bg-red-700');
+            } else {
+                // 匿名登录
+                authButton.textContent = '登录 / 注册';
+                authButton.onclick = () => {
+                    authModal.classList.remove('hidden'); // 显示模态框
+                };
+                authButton.classList.remove('bg-red-500', 'hover:bg-red-700');
+                authButton.classList.add('bg-secondary', 'hover:bg-purple-700');
+            }
+        }
+
+        /**
+         * 异步初始化 Firebase 并处理认证
+         */
+        async function initFirebase() {
+            try {
+                if (Object.keys(firebaseConfig).length === 0 || 
+                    firebaseConfig.apiKey === "YOUR_API_KEY_HERE") {
+                    throw new Error("Firebase 配置缺失。请替换代码中的占位符 YOUR_FIREBASE_CONFIG 为您的真实配置。");
+                }
+                
+                const app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+
+                // 优先使用 Canvas 令牌或匿名登录
+                if (initialAuthToken) {
+                    await signInWithCustomToken(auth, initialAuthToken);
+                } else if (!auth.currentUser) {
+                    // 外部运行时默认匿名登录
+                    await signInAnonymously(auth);
+                }
+
+                // 监听认证状态变化
+                onAuthStateChanged(auth, (user) => {
+                    if (user) {
+                        userId = user.uid;
+                        
+                        // 检查是否是邮箱/密码登录
+                        isEmailSignedIn = user.providerData.some(p => p.providerId === 'password');
+                        
+                        if (isEmailSignedIn) {
+                            // 邮箱登录，用户名为邮箱
+                            userName = user.email;
+                            userInfoEl.textContent = `当前身份: ${userName} (数据已同步)`;
+                        } else {
+                            // 匿名登录
+                            userName = '匿名用户';
+                            userInfoEl.textContent = `当前身份: 匿名用户 (ID: ${userId})。请登录以同步数据。`;
+                        }
+                        
+                        updateAuthUI();
+                        setupRealtimeListener();
+                    } else {
+                        userId = null;
+                        isEmailSignedIn = false;
+                        userName = '未登录';
+                        userInfoEl.textContent = `未登录。`;
+                        updateAuthUI();
+                        allPrompts = [];
+                        renderPrompts([]);
+                    }
+                });
+
+            } catch (error) {
+                console.error("Firebase 初始化或认证失败:", error);
+                showError("应用初始化失败: " + error.message);
+            }
+        }
+
+        /**
+         * 构造 Firestore 集合路径
+         * @returns {string} 集合路径
+         */
+        function getCollectionPath() {
+            if (!userId) {
+                return null;
+            }
+            // 使用用户私有路径: /artifacts/{appId}/users/{userId}/prompts
+            return `artifacts/${appId}/users/${userId}/prompts`;
+        }
+
+        /**
+         * 实时监听 Prompt 数据变化
+         */
+        function setupRealtimeListener() {
+            const path = getCollectionPath();
+            if (!path) {
+                console.warn("未获取到用户 ID，无法设置监听。");
+                return;
+            }
+
+            const promptsCol = collection(db, path);
+            const q = query(promptsCol); 
+
+            onSnapshot(q, (snapshot) => {
+                loadingIndicatorEl.classList.add('hidden');
+                
+                allPrompts = snapshot.docs.map(doc => ({
+                    id: doc.id,
+                    ...doc.data()
+                }));
+
+                allPrompts.sort((a, b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
+
+                filterAndRenderPrompts(searchInput.value.toLowerCase());
+            }, (error) => {
+                console.error("实时监听失败:", error);
+                showError("数据实时同步失败: " + error.message);
+            });
+        }
+
+        /**
+         * 渲染 Prompt 列表 (代码与之前相同，省略大部分)
+         */
+        function renderPrompts(prompts) {
+            promptListContainer.innerHTML = ''; 
+
+            if (prompts.length === 0) {
+                if (allPrompts.length > 0) {
+                    noResultsEl.classList.remove('hidden');
+                } else {
+                    noResultsEl.classList.add('hidden');
+                    promptListContainer.innerHTML = '<p class="text-gray-500">数据库中还没有 Prompt。请使用上方的表单添加第一个！</p>';
+                    promptListContainer.classList.remove('justify-center', 'items-center');
+                }
+                return;
+            }
+
+            noResultsEl.classList.add('hidden');
+            
+            prompts.forEach(prompt => {
+                const promptCard = document.createElement('div');
+                promptCard.className = 'bg-white p-6 rounded-xl shadow-lg border border-gray-100 hover:shadow-xl transition duration-200 flex flex-col space-y-3';
+                
+                const date = prompt.timestamp ? new Date(prompt.timestamp.seconds * 1000) : new Date();
+                const formattedDate = date.toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' });
+
+                promptCard.innerHTML = `
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-xl font-bold text-gray-800">${prompt.title}</h3>
+                        <span class="text-xs text-gray-400">${formattedDate}</span>
+                    </div>
+                    <p class="text-sm text-gray-600 flex-grow">${prompt.content}</p>
+                    <div class="flex justify-end space-x-4 mt-3">
+                        <button class="copy-btn text-xs text-primary hover:text-indigo-600 font-medium transition duration-150" 
+                                data-content="${prompt.content}">
+                            复制 Prompt 文本
+                        </button>
+                         <button class="delete-btn text-xs text-red-500 hover:text-red-700 font-medium transition duration-150" 
+                                data-id="${prompt.id}">
+                            删除
+                        </button>
+                    </div>
+                `;
+                promptListContainer.appendChild(promptCard);
+            });
+
+            document.querySelectorAll('.copy-btn').forEach(button => {
+                button.addEventListener('click', (e) => {
+                    const contentToCopy = e.target.getAttribute('data-content');
+                    copyToClipboard(contentToCopy, e.target);
+                });
+            });
+            document.querySelectorAll('.delete-btn').forEach(button => {
+                button.addEventListener('click', (e) => {
+                    const promptId = e.target.getAttribute('data-id');
+                    handleDeletePrompt(promptId);
+                });
+            });
+        }
+
+        // --- 其他函数 (filterAndRenderPrompts, handleAddPrompt, handleDeletePrompt, copyToClipboard) 保持不变 ---
+        
+        function filterAndRenderPrompts(searchTerm) {
+            let filteredPrompts = allPrompts;
+
+            if (searchTerm.trim() !== '') {
+                filteredPrompts = allPrompts.filter(prompt => {
+                    const titleMatch = prompt.title.toLowerCase().includes(searchTerm);
+                    const contentMatch = prompt.content.toLowerCase().includes(searchTerm);
+                    return titleMatch || contentMatch;
+                });
+            }
+            renderPrompts(filteredPrompts);
+        }
+
+        async function handleAddPrompt(e) {
+            e.preventDefault();
+
+            if (!userId) {
+                showError("用户未认证，无法保存数据。请登录或刷新重试。");
+                return;
+            }
+
+            const title = document.getElementById('prompt-title').value.trim();
+            const content = document.getElementById('prompt-content').value.trim();
+
+            if (!title || !content) {
+                showError("标题和内容都不能为空。");
+                return;
+            }
+
+            addPromptBtn.disabled = true;
+            btnText.classList.add('hidden');
+            btnLoading.classList.remove('hidden');
+
+            try {
+                const path = getCollectionPath();
+                if (path) {
+                    await addDoc(collection(db, path), {
+                        title: title,
+                        content: content,
+                        timestamp: serverTimestamp() 
+                    });
+                    
+                    addPromptForm.reset();
+                } else {
+                    throw new Error("无法确定存储路径。");
+                }
+            } catch (error) {
+                console.error("添加 Prompt 失败:", error);
+                showError("保存失败: " + error.message);
+            } finally {
+                addPromptBtn.disabled = false;
+                btnText.classList.remove('hidden');
+                btnLoading.classList.add('hidden');
+            }
+        }
+        
+        async function handleDeletePrompt(promptId) {
+            if (!userId) {
+                showError("用户未认证，无法执行删除操作。");
+                return;
+            }
+
+            try {
+                const path = getCollectionPath();
+                if (path) {
+                    const docRef = doc(db, path, promptId);
+                    console.log(`尝试删除文档 ID: ${promptId}`);
+                    
+                    await deleteDoc(docRef);
+                    console.log(`文档 ID: ${promptId} 删除成功`);
+                } else {
+                    throw new Error("无法确定存储路径。");
+                }
+            } catch (error) {
+                console.error("删除 Prompt 失败:", error);
+                showError("删除失败: " + error.message);
+            }
+        }
+
+
+        function copyToClipboard(text, button) {
+            try {
+                const textarea = document.createElement('textarea');
+                textarea.value = text;
+                document.body.appendChild(textarea);
+                textarea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textarea);
+
+                const originalText = button.textContent;
+                button.textContent = '已复制!';
+                setTimeout(() => {
+                    button.textContent = originalText;
+                }, 1500);
+
+            } catch (err) {
+                console.error('复制到剪贴板失败:', err);
+                showError('复制失败，请手动复制文本。');
+            }
+        }
+        
+        // --- 事件监听器 ---
+
+        addPromptForm.addEventListener('submit', handleAddPrompt);
+        searchInput.addEventListener('input', (e) => {
+            const searchTerm = e.target.value.toLowerCase();
+            filterAndRenderPrompts(searchTerm);
+        });
+        
+        // 模态框事件
+        authForm.addEventListener('submit', handleAuthSubmit);
+        toggleModeBtn.addEventListener('click', toggleAuthMode);
+        closeModalBtn.addEventListener('click', () => {
+            authModal.classList.add('hidden');
+        });
+
+        // 启动应用
+        // 500ms 延迟，确保 Canvas 密钥注入
+        setTimeout(() => {
+            initFirebase();
+        }, 500);
+
+    </script>
+</body>
+</html>
