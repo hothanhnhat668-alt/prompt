@@ -4,9 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Prompt 搜索数据库</title>
-    <!-- 引入 Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- 设置 Tailwind 样式配置 -->
     <script>
         tailwind.config = {
             theme: {
@@ -122,7 +120,6 @@
             <span class="block sm:inline" id="error-text"></span>
         </div>
 
-        <!-- 1. 添加 Prompt 表单 -->
         <div class="bg-white p-6 md:p-8 shadow-xl rounded-2xl border border-gray-200">
             <h2 class="text-2xl font-semibold text-gray-700 mb-4">添加新的 Prompt</h2>
             <form id="add-prompt-form" class="space-y-4">
@@ -152,7 +149,6 @@
             </form>
         </div>
 
-        <!-- 2. 搜索和列表区域 -->
         <div class="space-y-6">
             <div class="bg-white p-6 md:p-8 shadow-xl rounded-2xl border border-gray-200">
                 <h2 class="text-2xl font-semibold text-gray-700 mb-4">搜索 Prompt</h2>
@@ -161,14 +157,12 @@
             </div>
 
             <div id="prompt-list-container" class="min-h-[200px] flex justify-center items-center">
-                <!-- Prompts will be rendered here -->
                 <p id="loading-indicator" class="text-gray-500">加载中...</p>
             </div>
             <p id="no-results" class="hidden text-center text-gray-500 mt-4">没有找到匹配的 Prompt。</p>
         </div>
     </div>
 
-    <!-- 3. 登录/注册 模态框 -->
     <div id="auth-modal" class="modal hidden">
         <div id="auth-modal-content" class="modal-content">
             <h2 id="modal-title" class="text-2xl font-semibold text-gray-700 mb-4 text-center">用户登录</h2>
@@ -201,12 +195,11 @@
         </div>
     </div>
 
-    <!-- 4. Prompt 详情 模态框 -->
     <div id="detail-modal" class="modal hidden">
         <div id="detail-modal-content" class="modal-content">
             <h2 id="detail-title" class="text-2xl font-bold text-gray-800 mb-3">Prompt 标题</h2>
             <div id="detail-tags" class="flex flex-wrap gap-2 mb-4"></div>
-            <div id="detail-content" class="detail-content-box bg-gray-50 p-4 rounded-xl text-gray-700 text-sm border border-gray-200">
+            <div id="detail-content" class="detail-content-box custom-scroll bg-gray-50 p-4 rounded-xl text-gray-700 text-sm border border-gray-200">
                 完整的 Prompt 内容将显示在这里。
             </div>
             <div class="flex justify-end space-x-3 mt-4">
@@ -225,7 +218,6 @@
         </div>
     </div>
 
-    <!-- Firebase 模块导入 -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { 
@@ -236,10 +228,8 @@
             signOut,
             createUserWithEmailAndPassword,
             signInWithEmailAndPassword,
-            setPersistence, // 引入设置持久化方法
-            browserSessionPersistence,
-            browserLocalPersistence,
-            inMemoryPersistence
+            setPersistence,
+            browserLocalPersistence
         } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { 
             getFirestore, 
@@ -248,13 +238,9 @@
             query, 
             onSnapshot,
             serverTimestamp,
-            setLogLevel,
-            doc,          
-            deleteDoc     
+            doc,
+            deleteDoc 
         } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-        // 启用 Firestore 调试日志
-        setLogLevel('Debug');
 
         // --- 全局变量和初始化 ---
         let db;
@@ -264,22 +250,21 @@
         let isEmailSignedIn = false;
         let authMode = 'login'; 
         let allPrompts = []; 
+        let unsubscribe; // To hold the listener function
 
         // !!! 请替换下面的 YOUR_FIREBASE_CONFIG 为您的真实配置 !!!
-        // WARNING: 确保您已将您的真实 Firebase 配置粘贴到这里，否则应用将无法连接。
         const YOUR_FIREBASE_CONFIG = {
-           apiKey: "AIzaSyBePfEThajXkfixYc-oUl9m8htKcXRuuI8",
-  authDomain: "prompt-29d34.firebaseapp.com",
-  projectId: "prompt-29d34",
-  storageBucket: "prompt-29d34.firebasestorage.app",
-  messagingSenderId: "2282413195",
-  appId: "1:2282413195:web:1ecae5e1a116be239b488e",
-  measurementId: "G-R7TW7M0L5M"
+            apiKey: "AIzaSyBePfEThajXkfixYc-oUl9m8htKcXRuuI8",
+            authDomain: "prompt-29d34.firebaseapp.com",
+            projectId: "prompt-29d34",
+            storageBucket: "prompt-29d34.firebasestorage.app",
+            messagingSenderId: "2282413195",
+            appId: "1:2282413195:web:1ecae5e1a116be239b488e",
+            measurementId: "G-R7TW7M0L5M"
         };
 
         const appId = "default-standalone-app"; 
         
-        // 兼容 Canvas 运行时和外部部署
         const firebaseConfig = typeof __firebase_config !== 'undefined' && Object.keys(JSON.parse(__firebase_config)).length > 0
             ? JSON.parse(__firebase_config)
             : YOUR_FIREBASE_CONFIG; 
@@ -299,7 +284,6 @@
         const btnLoading = document.getElementById('btn-loading');
         const searchInput = document.getElementById('search-input');
         const authButton = document.getElementById('auth-button');
-        const promptTagsInput = document.getElementById('prompt-tags'); // 新增标签输入框
 
         // 认证模态框元素
         const authModal = document.getElementById('auth-modal');
@@ -365,7 +349,6 @@
             errorEl.classList.add('hidden'); 
 
             try {
-                // 确保持久化设置为本地 (Local) 以在浏览器关闭后保持登录状态
                 await setPersistence(auth, browserLocalPersistence); 
 
                 if (authMode === 'register') {
@@ -399,17 +382,13 @@
         }
 
         /**
-         * 处理退出登录
+         * 处理登出
          */
         async function handleSignOut() {
-            if (!auth) return;
             try {
-                // 退出登录
                 await signOut(auth);
-                // 退出登录后，重新以匿名用户身份登录，以保持 Firestore 连接并访问匿名数据
-                await signInAnonymously(auth); 
             } catch (error) {
-                console.error("退出登录失败:", error);
+                console.error("Sign out error", error);
                 showError("退出登录失败: " + error.message);
             }
         }
@@ -421,49 +400,34 @@
             if (isEmailSignedIn) {
                 authButton.textContent = `退出登录 (${userName})`;
                 authButton.onclick = handleSignOut;
-                authButton.classList.remove('bg-secondary');
+                authButton.classList.remove('bg-secondary', 'hover:bg-purple-700');
                 authButton.classList.add('bg-red-500', 'hover:bg-red-700');
             } else {
                 authButton.textContent = '登录 / 注册';
                 authButton.onclick = () => {
-                    authModal.classList.remove('hidden'); 
+                    authModal.classList.remove('hidden');
                 };
                 authButton.classList.remove('bg-red-500', 'hover:bg-red-700');
                 authButton.classList.add('bg-secondary', 'hover:bg-purple-700');
             }
         }
-
+        
         /**
-         * 异步初始化 Firebase 并处理认证
+         * 【FIXED】单一、修正后的 Firebase 初始化和认证处理函数
          */
         async function initFirebase() {
             try {
-                if (Object.keys(firebaseConfig).length === 0 || 
-                    firebaseConfig.apiKey === "YOUR_API_KEY_HERE") {
+                if (!firebaseConfig || !firebaseConfig.apiKey || firebaseConfig.apiKey.includes("YOUR_API_KEY")) {
                     throw new Error("Firebase 配置缺失。请替换代码中的占位符 YOUR_FIREBASE_CONFIG 为您的真实配置。");
                 }
                 
                 const app = initializeApp(firebaseConfig);
                 db = getFirestore(app);
                 auth = getAuth(app);
-                
-                // 检查 Canvas 初始 Token，这是最高优先级的认证方式
-                if (initialAuthToken) {
-                    await signInWithCustomToken(auth, initialAuthToken);
-                } 
-                // 如果没有登录状态 (即用户是第一次访问或已退出)，则使用匿名登录建立连接
-                else if (!auth.currentUser) {
-                     // Firebase 会自动检查是否有持久化的 email 登录状态。
-                     // 如果没有，它会继续匿名登录。
-                     await signInAnonymously(auth);
-                }
-                
-                // onAuthStateChanged 负责处理状态变化（包括自动恢复登录）
-                onAuthStateChanged(auth, (user) => {
+
+                onAuthStateChanged(auth, async (user) => {
                     if (user) {
                         userId = user.uid;
-                        
-                        // 检查用户是否通过邮箱/密码登录 (即是否需要保持状态的用户)
                         isEmailSignedIn = user.providerData.some(p => p.providerId === 'password');
                         
                         if (isEmailSignedIn) {
@@ -471,37 +435,43 @@
                             userInfoEl.textContent = `当前身份: ${userName} (数据已同步)`;
                         } else {
                             userName = '匿名用户';
-                            userInfoEl.textContent = `当前身份: 匿名用户 (ID: ${userId})。请登录以同步数据。`;
+                            userInfoEl.textContent = `当前身份: 匿名用户。请登录以同步您的数据。`;
                         }
                         
                         updateAuthUI();
                         setupRealtimeListener();
                     } else {
-                        // 用户完全登出或初始化失败
-                        userId = null;
-                        isEmailSignedIn = false;
-                        userName = '未登录';
-                        userInfoEl.textContent = `未登录。`;
-                        updateAuthUI();
-                        allPrompts = [];
-                        renderPrompts([]);
+                        // No user is signed in. Sign in anonymously to get a temporary user ID.
+                        try {
+                            await signInAnonymously(auth);
+                            // The onAuthStateChanged listener will run again with the new anonymous user.
+                        } catch (anonError) {
+                            console.error("Anonymous sign-in failed:", anonError);
+                            showError("无法建立匿名会话，应用功能将受限。");
+                            userId = null;
+                            isEmailSignedIn = false;
+                            userInfoEl.textContent = `未登录，连接失败。`;
+                            updateAuthUI();
+                            renderPrompts([]);
+                        }
                     }
                 });
 
+                if (initialAuthToken && !auth.currentUser) {
+                    await signInWithCustomToken(auth, initialAuthToken);
+                }
+
             } catch (error) {
-                console.error("Firebase 初始化或认证失败:", error);
+                console.error("Firebase Initialization Failed:", error);
                 showError("应用初始化失败: " + error.message);
             }
         }
 
         /**
          * 构造 Firestore 集合路径
-         * @returns {string} 集合路径
          */
         function getCollectionPath() {
-            if (!userId) {
-                return null;
-            }
+            if (!userId) return null;
             return `artifacts/${appId}/users/${userId}/prompts`;
         }
 
@@ -509,22 +479,28 @@
          * 实时监听 Prompt 数据变化
          */
         function setupRealtimeListener() {
+            // Unsubscribe from previous listener if it exists
+            if (unsubscribe) {
+                unsubscribe();
+            }
+
             const path = getCollectionPath();
             if (!path) {
                 console.warn("未获取到用户 ID，无法设置监听。");
+                renderPrompts([]); // Clear list if no user
                 return;
             }
 
             const promptsCol = collection(db, path);
             const q = query(promptsCol); 
 
-            onSnapshot(q, (snapshot) => {
+            unsubscribe = onSnapshot(q, (snapshot) => {
                 loadingIndicatorEl.classList.add('hidden');
                 
                 allPrompts = snapshot.docs.map(doc => ({
                     id: doc.id,
                     ...doc.data(),
-                    tags: doc.data().tags || [], // 确保tags存在
+                    tags: doc.data().tags || [],
                 }));
 
                 allPrompts.sort((a, b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
@@ -538,14 +514,12 @@
         
         /**
          * 打开详情模态框
-         * @param {Object} prompt 
          */
         function openDetailModal(prompt) {
             detailTitle.textContent = prompt.title;
             detailContent.textContent = prompt.content;
             detailCopyBtn.setAttribute('data-content', prompt.content);
 
-            // 渲染标签
             detailTags.innerHTML = '';
             if (prompt.tags && prompt.tags.length > 0) {
                 prompt.tags.forEach(tag => {
@@ -559,7 +533,6 @@
             detailModal.classList.remove('hidden');
         }
 
-
         /**
          * 渲染 Prompt 列表
          */
@@ -567,12 +540,9 @@
             promptListContainer.innerHTML = ''; 
 
             if (prompts.length === 0) {
-                if (allPrompts.length > 0) {
-                    noResultsEl.classList.remove('hidden');
-                } else {
-                    noResultsEl.classList.add('hidden');
+                noResultsEl.classList.toggle('hidden', allPrompts.length === 0);
+                if (allPrompts.length === 0) {
                     promptListContainer.innerHTML = '<p class="text-gray-500">数据库中还没有 Prompt。请使用上方的表单添加第一个！</p>';
-                    promptListContainer.classList.remove('justify-center', 'items-center');
                 }
                 return;
             }
@@ -581,27 +551,24 @@
             
             prompts.forEach(prompt => {
                 const promptCard = document.createElement('div');
-                // 关键更改：添加 h-60 (固定高度) 和 overflow-hidden (防止内容溢出)
-                promptCard.className = 'bg-white p-6 rounded-xl shadow-lg border border-gray-100 hover:shadow-xl transition duration-200 flex flex-col space-y-3 cursor-pointer h-60 overflow-hidden';
+                promptCard.className = 'bg-white p-6 rounded-xl shadow-lg border border-gray-100 hover:shadow-xl transition duration-200 flex flex-col space-y-3 cursor-pointer';
                 
                 const date = prompt.timestamp ? new Date(prompt.timestamp.seconds * 1000) : new Date();
                 const formattedDate = date.toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' });
 
-                // 渲染标签
                 const tagsHtml = (prompt.tags || [])
                     .map(tag => `<span class="px-2 py-0.5 bg-gray-200 text-gray-600 text-xs rounded-full font-medium">${tag}</span>`)
                     .join('');
 
                 promptCard.innerHTML = `
                     <div class="flex items-center justify-between">
-                        <h3 class="text-xl font-bold text-gray-800">${prompt.title}</h3>
-                        <span class="text-xs text-gray-400">${formattedDate}</span>
+                        <h3 class="text-xl font-bold text-gray-800 truncate">${prompt.title}</h3>
+                        <span class="text-xs text-gray-400 flex-shrink-0 ml-2">${formattedDate}</span>
                     </div>
-                    <div class="flex flex-wrap gap-2 mb-2">
+                    <div class="flex flex-wrap gap-2">
                        ${tagsHtml}
                     </div>
-                    <!-- 截断文本容器，限制高度 -->
-                    <p class="text-sm text-gray-600 flex-grow prompt-content-truncated h-20">${prompt.content}</p> 
+                    <p class="text-sm text-gray-600 flex-grow prompt-content-truncated">${prompt.content}</p> 
                     <div class="flex justify-between items-center mt-3 pt-3 border-t border-gray-100">
                         <button class="view-detail-btn text-xs text-secondary hover:text-purple-700 font-medium transition duration-150" 
                                 data-id="${prompt.id}">
@@ -615,19 +582,13 @@
                 `;
                 promptListContainer.appendChild(promptCard);
             
-                // 添加查看详情事件
-                promptCard.querySelector('.view-detail-btn').addEventListener('click', () => {
-                    openDetailModal(prompt);
-                });
-                
-                // 点击卡片其他部分也打开详情，但排除删除按钮
+                promptCard.querySelector('.view-detail-btn').addEventListener('click', () => openDetailModal(prompt));
                 promptCard.addEventListener('click', (e) => {
                     if (!e.target.classList.contains('delete-btn')) {
-                         openDetailModal(prompt);
+                        openDetailModal(prompt);
                     }
                 });
 
-                // 删除按钮事件
                 promptCard.querySelector('.delete-btn').addEventListener('click', (e) => {
                     const promptId = e.target.getAttribute('data-id');
                     handleDeletePrompt(promptId);
@@ -635,7 +596,9 @@
             });
         }
 
-        
+        /**
+         * 过滤并渲染 Prompts
+         */
         function filterAndRenderPrompts(searchTerm) {
             let filteredPrompts = allPrompts;
 
@@ -645,13 +608,15 @@
                     const titleMatch = prompt.title.toLowerCase().includes(term);
                     const contentMatch = prompt.content.toLowerCase().includes(term);
                     const tagsMatch = prompt.tags.some(tag => tag.toLowerCase().includes(term));
-                    // 搜索现在包括了标题、内容和标签
                     return titleMatch || contentMatch || tagsMatch;
                 });
             }
             renderPrompts(filteredPrompts);
         }
 
+        /**
+         * 处理添加 Prompt
+         */
         async function handleAddPrompt(e) {
             e.preventDefault();
 
@@ -661,7 +626,7 @@
             }
 
             const title = document.getElementById('prompt-title').value.trim();
-            const tagsString = document.getElementById('prompt-tags').value.trim(); // 获取标签字符串
+            const tagsString = document.getElementById('prompt-tags').value.trim();
             const content = document.getElementById('prompt-content').value.trim();
 
             if (!title || !content) {
@@ -669,7 +634,6 @@
                 return;
             }
             
-            // 将标签字符串转换为数组
             const tagsArray = tagsString 
                 ? tagsString.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0)
                 : [];
@@ -684,7 +648,7 @@
                     await addDoc(collection(db, path), {
                         title: title,
                         content: content,
-                        tags: tagsArray, // 存储标签数组
+                        tags: tagsArray,
                         timestamp: serverTimestamp() 
                     });
                     
@@ -702,7 +666,11 @@
             }
         }
         
+        /**
+         * 处理删除 Prompt
+         */
         async function handleDeletePrompt(promptId) {
+            if (!confirm("确定要删除这个 Prompt 吗？")) return;
             if (!userId) {
                 showError("用户未认证，无法执行删除操作。");
                 return;
@@ -722,22 +690,21 @@
             }
         }
 
-
-        function copyToClipboard(text, button) {
+        /**
+         * 【IMPROVED】使用现代 Clipboard API 复制文本
+         */
+        async function copyToClipboard(text, button) {
+            if (!navigator.clipboard) {
+                showError('复制失败，您的浏览器不支持安全剪贴板功能。');
+                return;
+            }
             try {
-                const textarea = document.createElement('textarea');
-                textarea.value = text;
-                document.body.appendChild(textarea);
-                textarea.select();
-                document.execCommand('copy');
-                document.body.removeChild(textarea);
-
+                await navigator.clipboard.writeText(text);
                 const originalText = button.textContent;
                 button.textContent = '已复制!';
                 setTimeout(() => {
                     button.textContent = originalText;
                 }, 1500);
-
             } catch (err) {
                 console.error('复制到剪贴板失败:', err);
                 showError('复制失败，请手动复制文本。');
@@ -748,8 +715,7 @@
 
         addPromptForm.addEventListener('submit', handleAddPrompt);
         searchInput.addEventListener('input', (e) => {
-            const searchTerm = e.target.value.toLowerCase();
-            filterAndRenderPrompts(searchTerm);
+            filterAndRenderPrompts(e.target.value.toLowerCase());
         });
         
         // 认证模态框事件
@@ -771,18 +737,9 @@
             detailModal.classList.add('hidden');
         });
         
-        authButton.onclick = () => {
-            if (isEmailSignedIn) {
-                handleSignOut();
-            } else {
-                authModal.classList.remove('hidden');
-            }
-        }; 
-
+        // 【IMPROVED】移除不必要的延时
         // 启动应用
-        setTimeout(() => {
-            initFirebase();
-        }, 500);
+        initFirebase();
 
     </script>
 </body>
