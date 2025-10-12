@@ -55,6 +55,15 @@
             grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
             gap: 1rem;
         }
+        
+        /* 强制Prompt内容截断 - 调整为最多显示 5 行 */
+        .prompt-content-truncated {
+            display: -webkit-box;
+            -webkit-line-clamp: 5; /* **调整为显示 5 行** */
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
 
         /* 调整输入框和按钮的焦点样式 */
         input:focus, textarea:focus, button:focus {
@@ -82,6 +91,17 @@
             box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
             width: 90%;
             max-width: 400px;
+            position: relative;
+        }
+        #detail-modal-content {
+            max-width: 700px;
+            max-height: 90vh;
+        }
+        .detail-content-box {
+            white-space: pre-wrap;
+            word-break: break-word;
+            max-height: 60vh;
+            overflow-y: auto;
         }
     </style>
 </head>
@@ -113,6 +133,12 @@
                            placeholder="输入简短的标题">
                 </div>
                 <div>
+                    <label for="prompt-tags" class="block text-sm font-medium text-gray-700 mb-1">标签 (可选, 用逗号分隔: 代码, 写作, 创意)</label>
+                    <input type="text" id="prompt-tags"
+                           class="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-primary focus:border-primary transition duration-150"
+                           placeholder="例如: 科技, 旅游, 总结">
+                </div>
+                <div>
                     <label for="prompt-content" class="block text-sm font-medium text-gray-700 mb-1">Prompt 内容</label>
                     <textarea id="prompt-content" rows="4" required 
                               class="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-primary focus:border-primary transition duration-150"
@@ -130,7 +156,7 @@
         <div class="space-y-6">
             <div class="bg-white p-6 md:p-8 shadow-xl rounded-2xl border border-gray-200">
                 <h2 class="text-2xl font-semibold text-gray-700 mb-4">搜索 Prompt</h2>
-                <input type="text" id="search-input" placeholder="输入关键词搜索 (标题或内容)..." 
+                <input type="text" id="search-input" placeholder="输入关键词搜索 (标题, 内容或标签)..." 
                        class="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-primary focus:border-primary transition duration-150">
             </div>
 
@@ -144,7 +170,7 @@
 
     <!-- 3. 登录/注册 模态框 -->
     <div id="auth-modal" class="modal hidden">
-        <div class="modal-content">
+        <div id="auth-modal-content" class="modal-content">
             <h2 id="modal-title" class="text-2xl font-semibold text-gray-700 mb-4 text-center">用户登录</h2>
             <form id="auth-form" class="space-y-4">
                 <div>
@@ -167,7 +193,31 @@
             <button id="toggle-mode-btn" class="w-full mt-3 text-sm text-primary hover:text-indigo-700 transition duration-150 font-medium">
                 切换到注册模式
             </button>
-            <button id="close-modal-btn" class="absolute top-3 right-3 text-gray-500 hover:text-gray-800">
+            <button id="close-auth-modal-btn" class="absolute top-3 right-3 text-gray-500 hover:text-gray-800">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+        </div>
+    </div>
+
+    <!-- 4. Prompt 详情 模态框 -->
+    <div id="detail-modal" class="modal hidden">
+        <div id="detail-modal-content" class="modal-content">
+            <h2 id="detail-title" class="text-2xl font-bold text-gray-800 mb-3">Prompt 标题</h2>
+            <div id="detail-tags" class="flex flex-wrap gap-2 mb-4"></div>
+            <div id="detail-content" class="detail-content-box bg-gray-50 p-4 rounded-xl text-gray-700 text-sm border border-gray-200">
+                完整的 Prompt 内容将显示在这里。
+            </div>
+            <div class="flex justify-end space-x-3 mt-4">
+                <button id="detail-copy-btn" class="py-2 px-4 bg-primary text-white font-semibold rounded-xl hover:bg-indigo-700 transition duration-300 shadow-md text-sm">
+                    复制完整 Prompt
+                </button>
+                <button id="close-detail-modal-btn" class="py-2 px-4 bg-gray-300 text-gray-700 font-semibold rounded-xl hover:bg-gray-400 transition duration-300 text-sm">
+                    关闭
+                </button>
+            </div>
+            <button id="close-detail-modal-icon" class="absolute top-3 right-3 text-gray-500 hover:text-gray-800">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                 </svg>
@@ -184,8 +234,12 @@
             signInWithCustomToken, 
             onAuthStateChanged, 
             signOut,
-            createUserWithEmailAndPassword, // 引入注册
-            signInWithEmailAndPassword      // 引入登录
+            createUserWithEmailAndPassword,
+            signInWithEmailAndPassword,
+            setPersistence, // 引入设置持久化方法
+            browserSessionPersistence,
+            browserLocalPersistence,
+            inMemoryPersistence
         } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { 
             getFirestore, 
@@ -208,12 +262,13 @@
         let userId = null;
         let userName = '匿名用户';
         let isEmailSignedIn = false;
-        let authMode = 'login'; // 'login' or 'register'
+        let authMode = 'login'; 
         let allPrompts = []; 
 
         // !!! 请替换下面的 YOUR_FIREBASE_CONFIG 为您的真实配置 !!!
+        // WARNING: 确保您已将您的真实 Firebase 配置粘贴到这里，否则应用将无法连接。
         const YOUR_FIREBASE_CONFIG = {
-            apiKey: "AIzaSyBePfEThajXkfixYc-oUl9m8htKcXRuuI8",
+           apiKey: "AIzaSyBePfEThajXkfixYc-oUl9m8htKcXRuuI8",
   authDomain: "prompt-29d34.firebaseapp.com",
   projectId: "prompt-29d34",
   storageBucket: "prompt-29d34.firebasestorage.app",
@@ -231,6 +286,7 @@
 
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
         
+        // UI 元素获取
         const errorEl = document.getElementById('error-message');
         const errorTextEl = document.getElementById('error-text');
         const userInfoEl = document.getElementById('user-info');
@@ -243,16 +299,26 @@
         const btnLoading = document.getElementById('btn-loading');
         const searchInput = document.getElementById('search-input');
         const authButton = document.getElementById('auth-button');
+        const promptTagsInput = document.getElementById('prompt-tags'); // 新增标签输入框
 
-        // 模态框元素
+        // 认证模态框元素
         const authModal = document.getElementById('auth-modal');
         const modalTitle = document.getElementById('modal-title');
         const authForm = document.getElementById('auth-form');
         const modalSubmitBtn = document.getElementById('modal-submit-btn');
         const toggleModeBtn = document.getElementById('toggle-mode-btn');
-        const closeModalBtn = document.getElementById('close-modal-btn');
+        const closeModalBtn = document.getElementById('close-auth-modal-btn');
         const emailInput = document.getElementById('email');
         const passwordInput = document.getElementById('password');
+
+        // 详情模态框元素
+        const detailModal = document.getElementById('detail-modal');
+        const detailTitle = document.getElementById('detail-title');
+        const detailTags = document.getElementById('detail-tags');
+        const detailContent = document.getElementById('detail-content');
+        const detailCopyBtn = document.getElementById('detail-copy-btn');
+        const closeDetailModalBtn = document.getElementById('close-detail-modal-btn');
+        const closeDetailModalIcon = document.getElementById('close-detail-modal-icon');
 
         /**
          * 显示错误信息
@@ -296,18 +362,18 @@
 
             modalSubmitBtn.disabled = true;
             modalSubmitBtn.textContent = authMode === 'login' ? '登录中...' : '注册中...';
-            errorEl.classList.add('hidden'); // 隐藏通用错误，等待认证错误
+            errorEl.classList.add('hidden'); 
 
             try {
+                // 确保持久化设置为本地 (Local) 以在浏览器关闭后保持登录状态
+                await setPersistence(auth, browserLocalPersistence); 
+
                 if (authMode === 'register') {
-                    // 注册
                     await createUserWithEmailAndPassword(auth, email, password);
                 } else {
-                    // 登录
                     await signInWithEmailAndPassword(auth, email, password);
                 }
                 
-                // 成功后关闭模态框
                 authModal.classList.add('hidden');
                 authForm.reset();
             } catch (error) {
@@ -338,10 +404,10 @@
         async function handleSignOut() {
             if (!auth) return;
             try {
+                // 退出登录
                 await signOut(auth);
-                // 退出后自动转为匿名登录，这样用户仍能使用应用
-                await signInAnonymously(auth);
-                // onAuthStateChanged 会处理后续更新
+                // 退出登录后，重新以匿名用户身份登录，以保持 Firestore 连接并访问匿名数据
+                await signInAnonymously(auth); 
             } catch (error) {
                 console.error("退出登录失败:", error);
                 showError("退出登录失败: " + error.message);
@@ -353,16 +419,14 @@
          */
         function updateAuthUI() {
             if (isEmailSignedIn) {
-                // 已通过邮箱登录
                 authButton.textContent = `退出登录 (${userName})`;
                 authButton.onclick = handleSignOut;
                 authButton.classList.remove('bg-secondary');
                 authButton.classList.add('bg-red-500', 'hover:bg-red-700');
             } else {
-                // 匿名登录
                 authButton.textContent = '登录 / 注册';
                 authButton.onclick = () => {
-                    authModal.classList.remove('hidden'); // 显示模态框
+                    authModal.classList.remove('hidden'); 
                 };
                 authButton.classList.remove('bg-red-500', 'hover:bg-red-700');
                 authButton.classList.add('bg-secondary', 'hover:bg-purple-700');
@@ -382,29 +446,30 @@
                 const app = initializeApp(firebaseConfig);
                 db = getFirestore(app);
                 auth = getAuth(app);
-
-                // 优先使用 Canvas 令牌或匿名登录
+                
+                // 检查 Canvas 初始 Token，这是最高优先级的认证方式
                 if (initialAuthToken) {
                     await signInWithCustomToken(auth, initialAuthToken);
-                } else if (!auth.currentUser) {
-                    // 外部运行时默认匿名登录
-                    await signInAnonymously(auth);
+                } 
+                // 如果没有登录状态 (即用户是第一次访问或已退出)，则使用匿名登录建立连接
+                else if (!auth.currentUser) {
+                     // Firebase 会自动检查是否有持久化的 email 登录状态。
+                     // 如果没有，它会继续匿名登录。
+                     await signInAnonymously(auth);
                 }
-
-                // 监听认证状态变化
+                
+                // onAuthStateChanged 负责处理状态变化（包括自动恢复登录）
                 onAuthStateChanged(auth, (user) => {
                     if (user) {
                         userId = user.uid;
                         
-                        // 检查是否是邮箱/密码登录
+                        // 检查用户是否通过邮箱/密码登录 (即是否需要保持状态的用户)
                         isEmailSignedIn = user.providerData.some(p => p.providerId === 'password');
                         
                         if (isEmailSignedIn) {
-                            // 邮箱登录，用户名为邮箱
                             userName = user.email;
                             userInfoEl.textContent = `当前身份: ${userName} (数据已同步)`;
                         } else {
-                            // 匿名登录
                             userName = '匿名用户';
                             userInfoEl.textContent = `当前身份: 匿名用户 (ID: ${userId})。请登录以同步数据。`;
                         }
@@ -412,6 +477,7 @@
                         updateAuthUI();
                         setupRealtimeListener();
                     } else {
+                        // 用户完全登出或初始化失败
                         userId = null;
                         isEmailSignedIn = false;
                         userName = '未登录';
@@ -436,7 +502,6 @@
             if (!userId) {
                 return null;
             }
-            // 使用用户私有路径: /artifacts/{appId}/users/{userId}/prompts
             return `artifacts/${appId}/users/${userId}/prompts`;
         }
 
@@ -458,7 +523,8 @@
                 
                 allPrompts = snapshot.docs.map(doc => ({
                     id: doc.id,
-                    ...doc.data()
+                    ...doc.data(),
+                    tags: doc.data().tags || [], // 确保tags存在
                 }));
 
                 allPrompts.sort((a, b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
@@ -469,9 +535,33 @@
                 showError("数据实时同步失败: " + error.message);
             });
         }
+        
+        /**
+         * 打开详情模态框
+         * @param {Object} prompt 
+         */
+        function openDetailModal(prompt) {
+            detailTitle.textContent = prompt.title;
+            detailContent.textContent = prompt.content;
+            detailCopyBtn.setAttribute('data-content', prompt.content);
+
+            // 渲染标签
+            detailTags.innerHTML = '';
+            if (prompt.tags && prompt.tags.length > 0) {
+                prompt.tags.forEach(tag => {
+                    const tagEl = document.createElement('span');
+                    tagEl.className = 'px-3 py-1 bg-primary text-white text-xs font-medium rounded-full';
+                    tagEl.textContent = tag;
+                    detailTags.appendChild(tagEl);
+                });
+            }
+
+            detailModal.classList.remove('hidden');
+        }
+
 
         /**
-         * 渲染 Prompt 列表 (代码与之前相同，省略大部分)
+         * 渲染 Prompt 列表
          */
         function renderPrompts(prompts) {
             promptListContainer.innerHTML = ''; 
@@ -491,55 +581,72 @@
             
             prompts.forEach(prompt => {
                 const promptCard = document.createElement('div');
-                promptCard.className = 'bg-white p-6 rounded-xl shadow-lg border border-gray-100 hover:shadow-xl transition duration-200 flex flex-col space-y-3';
+                // 关键更改：添加 h-60 (固定高度) 和 overflow-hidden (防止内容溢出)
+                promptCard.className = 'bg-white p-6 rounded-xl shadow-lg border border-gray-100 hover:shadow-xl transition duration-200 flex flex-col space-y-3 cursor-pointer h-60 overflow-hidden';
                 
                 const date = prompt.timestamp ? new Date(prompt.timestamp.seconds * 1000) : new Date();
                 const formattedDate = date.toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' });
+
+                // 渲染标签
+                const tagsHtml = (prompt.tags || [])
+                    .map(tag => `<span class="px-2 py-0.5 bg-gray-200 text-gray-600 text-xs rounded-full font-medium">${tag}</span>`)
+                    .join('');
 
                 promptCard.innerHTML = `
                     <div class="flex items-center justify-between">
                         <h3 class="text-xl font-bold text-gray-800">${prompt.title}</h3>
                         <span class="text-xs text-gray-400">${formattedDate}</span>
                     </div>
-                    <p class="text-sm text-gray-600 flex-grow">${prompt.content}</p>
-                    <div class="flex justify-end space-x-4 mt-3">
-                        <button class="copy-btn text-xs text-primary hover:text-indigo-600 font-medium transition duration-150" 
-                                data-content="${prompt.content}">
-                            复制 Prompt 文本
-                        </button>
-                         <button class="delete-btn text-xs text-red-500 hover:text-red-700 font-medium transition duration-150" 
+                    <div class="flex flex-wrap gap-2 mb-2">
+                       ${tagsHtml}
+                    </div>
+                    <!-- 截断文本容器，限制高度 -->
+                    <p class="text-sm text-gray-600 flex-grow prompt-content-truncated h-20">${prompt.content}</p> 
+                    <div class="flex justify-between items-center mt-3 pt-3 border-t border-gray-100">
+                        <button class="view-detail-btn text-xs text-secondary hover:text-purple-700 font-medium transition duration-150" 
                                 data-id="${prompt.id}">
+                            查看详情 & 复制
+                        </button>
+                        <button class="delete-btn text-xs text-red-500 hover:text-red-700 font-medium transition duration-150" 
+                                data-id="${prompt.id}" onclick="event.stopPropagation()">
                             删除
                         </button>
                     </div>
                 `;
                 promptListContainer.appendChild(promptCard);
-            });
-
-            document.querySelectorAll('.copy-btn').forEach(button => {
-                button.addEventListener('click', (e) => {
-                    const contentToCopy = e.target.getAttribute('data-content');
-                    copyToClipboard(contentToCopy, e.target);
+            
+                // 添加查看详情事件
+                promptCard.querySelector('.view-detail-btn').addEventListener('click', () => {
+                    openDetailModal(prompt);
                 });
-            });
-            document.querySelectorAll('.delete-btn').forEach(button => {
-                button.addEventListener('click', (e) => {
+                
+                // 点击卡片其他部分也打开详情，但排除删除按钮
+                promptCard.addEventListener('click', (e) => {
+                    if (!e.target.classList.contains('delete-btn')) {
+                         openDetailModal(prompt);
+                    }
+                });
+
+                // 删除按钮事件
+                promptCard.querySelector('.delete-btn').addEventListener('click', (e) => {
                     const promptId = e.target.getAttribute('data-id');
                     handleDeletePrompt(promptId);
                 });
             });
         }
 
-        // --- 其他函数 (filterAndRenderPrompts, handleAddPrompt, handleDeletePrompt, copyToClipboard) 保持不变 ---
         
         function filterAndRenderPrompts(searchTerm) {
             let filteredPrompts = allPrompts;
 
             if (searchTerm.trim() !== '') {
                 filteredPrompts = allPrompts.filter(prompt => {
-                    const titleMatch = prompt.title.toLowerCase().includes(searchTerm);
-                    const contentMatch = prompt.content.toLowerCase().includes(searchTerm);
-                    return titleMatch || contentMatch;
+                    const term = searchTerm.toLowerCase();
+                    const titleMatch = prompt.title.toLowerCase().includes(term);
+                    const contentMatch = prompt.content.toLowerCase().includes(term);
+                    const tagsMatch = prompt.tags.some(tag => tag.toLowerCase().includes(term));
+                    // 搜索现在包括了标题、内容和标签
+                    return titleMatch || contentMatch || tagsMatch;
                 });
             }
             renderPrompts(filteredPrompts);
@@ -554,12 +661,18 @@
             }
 
             const title = document.getElementById('prompt-title').value.trim();
+            const tagsString = document.getElementById('prompt-tags').value.trim(); // 获取标签字符串
             const content = document.getElementById('prompt-content').value.trim();
 
             if (!title || !content) {
                 showError("标题和内容都不能为空。");
                 return;
             }
+            
+            // 将标签字符串转换为数组
+            const tagsArray = tagsString 
+                ? tagsString.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0)
+                : [];
 
             addPromptBtn.disabled = true;
             btnText.classList.add('hidden');
@@ -571,6 +684,7 @@
                     await addDoc(collection(db, path), {
                         title: title,
                         content: content,
+                        tags: tagsArray, // 存储标签数组
                         timestamp: serverTimestamp() 
                     });
                     
@@ -598,10 +712,7 @@
                 const path = getCollectionPath();
                 if (path) {
                     const docRef = doc(db, path, promptId);
-                    console.log(`尝试删除文档 ID: ${promptId}`);
-                    
                     await deleteDoc(docRef);
-                    console.log(`文档 ID: ${promptId} 删除成功`);
                 } else {
                     throw new Error("无法确定存储路径。");
                 }
@@ -641,15 +752,34 @@
             filterAndRenderPrompts(searchTerm);
         });
         
-        // 模态框事件
+        // 认证模态框事件
         authForm.addEventListener('submit', handleAuthSubmit);
         toggleModeBtn.addEventListener('click', toggleAuthMode);
         closeModalBtn.addEventListener('click', () => {
             authModal.classList.add('hidden');
         });
 
+        // 详情模态框事件
+        detailCopyBtn.addEventListener('click', (e) => {
+            const contentToCopy = e.target.getAttribute('data-content');
+            copyToClipboard(contentToCopy, e.target);
+        });
+        closeDetailModalBtn.addEventListener('click', () => {
+            detailModal.classList.add('hidden');
+        });
+        closeDetailModalIcon.addEventListener('click', () => {
+            detailModal.classList.add('hidden');
+        });
+        
+        authButton.onclick = () => {
+            if (isEmailSignedIn) {
+                handleSignOut();
+            } else {
+                authModal.classList.remove('hidden');
+            }
+        }; 
+
         // 启动应用
-        // 500ms 延迟，确保 Canvas 密钥注入
         setTimeout(() => {
             initFirebase();
         }, 500);
