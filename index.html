@@ -1,783 +1,511 @@
 <!DOCTYPE html>
-<html lang="zh" class="">
+<html lang="zh-CN">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
-  <title>Prompt 搜索数据库</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>奥利给！</title>
+  <meta name="theme-color" content="#4f46e5" />
+  <link rel="manifest" href="manifest.json" />
+  <!-- TailwindCSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
-      theme: {
-        extend: {
-          fontFamily: { sans: ['Inter','sans-serif'] },
-          colors: { primary:'#4f46e5', secondary:'#8b5cf6', 'bg-dark':'#1f2937', 'card-light':'#374151' }
-        }
-      }
-    }
+      theme: { extend: {
+        fontFamily: { sans: ['Inter','ui-sans-serif','system-ui'] },
+        colors: { primary:'#4f46e5' }
+      } }
+    };
   </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <!-- React + ReactDOM (UMD) -->
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <!-- Babel for JSX -->
+  <script src="https://unpkg.com/@babel/standalone@7/babel.min.js"></script>
+  <!-- Fuse.js -->
+  <script src="https://cdn.jsdelivr.net/npm/fuse.js@6.6.2"></script>
+  <!-- Firebase (compat UMD) - Auth only -->
+  <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-auth-compat.js"></script>
+
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
-    body{ background:transparent; min-height:100vh; display:flex; justify-content:center; align-items:flex-start; padding:2rem 1rem; position:relative; overflow-x:hidden; }
-
-    /* ===== 背景层（渐变+格纹+流体 blob） ===== */
-    #bg-layer{ position:fixed; inset:0; z-index:0; pointer-events:none; }
-    .bg-gradient{ position:absolute; inset:0;
-      background:
-        radial-gradient(1200px 800px at 10% 5%, rgba(238,242,255,1) 0%, rgba(238,242,255,0) 40%),
-        radial-gradient(900px 700px at 85% 15%, rgba(254,226,226,1) 0%, rgba(254,226,226,0) 45%),
-        radial-gradient(900px 700px at 20% 85%, rgba(220,252,231,1) 0%, rgba(220,252,231,0) 40%),
-        linear-gradient(180deg, #ffffff 0%, #f7f7fb 60%, #f3f4f6 100%);
-    }
-    .dark .bg-gradient{
-      background:
-        radial-gradient(1200px 800px at 10% 5%, rgba(31,41,55,1) 0%, rgba(31,41,55,0) 35%),
-        radial-gradient(900px 700px at 85% 15%, rgba(55,48,163,0.35) 0%, rgba(55,48,163,0) 45%),
-        radial-gradient(900px 700px at 20% 85%, rgba(16,185,129,0.25) 0%, rgba(16,185,129,0) 40%),
-        linear-gradient(180deg, #0b1220 0%, #0f172a 45%, #111827 100%);
-    }
-    .bg-grid{ position:absolute; inset:0; background-image:
-      linear-gradient(to right, rgba(0,0,0,.06) 1px, transparent 1px),
-      linear-gradient(to bottom, rgba(0,0,0,.06) 1px, transparent 1px);
-      background-size:28px 28px; opacity:.25; mix-blend-mode:multiply;
-    }
-    .dark .bg-grid{ background-image:
-      linear-gradient(to right, rgba(255,255,255,.08) 1px, transparent 1px),
-      linear-gradient(to bottom, rgba(255,255,255,.08) 1px, transparent 1px);
-      opacity:.2; mix-blend-mode:screen;
-    }
-    .blob{ position:absolute; width:38vw; height:38vw; max-width:680px; max-height:680px; border-radius:50%;
-      filter:blur(40px); opacity:.7; mix-blend-mode:multiply; animation:blobFloat 16s ease-in-out infinite alternate;
-    }
-    .blob-1{ top:-8vh; left:-10vw; background:radial-gradient(circle at 30% 30%, #a78bfa, #60a5fa); animation-delay:0s; }
-    .blob-2{ top:20vh; right:-12vw; background:radial-gradient(circle at 60% 40%, #f59e0b, #f43f5e); animation-delay:.6s; }
-    .blob-3{ bottom:-10vh; left:20vw; background:radial-gradient(circle at 50% 50%, #34d399, #22d3ee); animation-delay:1.2s; }
-    @keyframes blobFloat{ 0%{ transform:translate3d(0,0,0) scale(1);} 100%{ transform:translate3d(3vw,-2vh,0) scale(1.06);} }
-
-    /* ===== 小黄豆吉祥物（动画回归） ===== */
-    #mascot-layer{ position:fixed; inset:0; z-index:1; pointer-events:none; }
-    .mascot{ position:absolute; width:56px; height:72px; pointer-events:none; animation: driftX linear infinite; will-change: transform; }
-    @keyframes driftX{ 0%{ transform: translate3d(-12vw,0,0) } 100%{ transform: translate3d(112vw,0,0) } }
-    .mascot .body{ position:absolute; inset:0; background:#F6D84C; border-radius:28px 28px 22px 22px; box-shadow:inset 0 -8px 0 rgba(0,0,0,.06); }
-    .mascot .strap{ position:absolute; left:-6px; right:-6px; top:30px; height:8px; background:#111827; opacity:.9; border-radius:6px; }
-    .mascot .goggle{ position:absolute; top:16px; left:50%; transform:translateX(-50%); width:34px; height:34px; border-radius:50%; border:5px solid #9CA3AF; background:#fff; overflow:hidden; }
-    .mascot .pupil{ position:absolute; top:50%; left:50%; width:10px; height:10px; background:#1f2937; border-radius:50%; transform:translate(-50%,-50%); animation: look 4s ease-in-out infinite; }
-    @keyframes look{ 0%,100%{transform:translate(-50%,-50%)} 25%{transform:translate(-35%,-50%)} 50%{transform:translate(-50%,-35%)} 75%{transform:translate(-65%,-50%)} }
-    .mascot .eyelid{ position:absolute; left:0; right:0; top:0; height:0%; background:#F6D84C; z-index:2; animation: blink 5s infinite; }
-    @keyframes blink{ 0%,92%,100%{height:0%} 94%{height:100%} 96%{height:0%} }
-    .mascot .hem{ position:absolute; left:0; right:0; bottom:0; height:26px; background:#2563EB; border-bottom-left-radius:14px; border-bottom-right-radius:14px; }
-    @media (prefers-reduced-motion: reduce){ .blob,.mascot{ animation:none!important; } }
-
-    /* ===== 列表/卡片/UI ===== */
-    .custom-scroll::-webkit-scrollbar{ width:8px; } .custom-scroll::-webkit-scrollbar-thumb{ background:#9ca3af; border-radius:4px; } .custom-scroll::-webkit-scrollbar-track{ background:#e5e7eb; }
-    input:focus,textarea:focus,button:focus{ outline:none; box-shadow:0 0 0 3px rgba(79,70,229,.35); }
-    #prompt-list-container{ display:flex; flex-wrap:wrap; gap:1rem; align-content:flex-start; min-height:200px; position:relative; z-index:2; }
-    .prompt-card{
-      width:260px; height:160px; background:rgba(255,255,255,.78); backdrop-filter:blur(12px);
-      border:1px solid rgba(255,255,255,.35); border-radius:1rem; box-shadow:0 6px 18px rgba(0,0,0,.08);
-      padding:1rem 1.2rem; display:flex; flex-direction:column; justify-content:space-between; cursor:grab;
-      transition:transform .25s ease, box-shadow .25s ease, border-color .25s ease; user-select:none;
-    }
-    .prompt-card:hover{ transform:translateY(-6px) scale(1.02); box-shadow:0 12px 30px rgba(79,70,229,.25); border-color:rgba(79,70,229,.35); }
-    .prompt-card.dragging{ opacity:.55; transform:scale(.98); cursor:grabbing; }
-    .prompt-title{ font-size:1.1rem; font-weight:700; color:#111827; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-    .prompt-date{ font-size:.75rem; color:#6b7280; text-align:right; }
-
-    .modal{ position:fixed; inset:0; background:rgba(17,24,39,.45); display:flex; justify-content:center; align-items:center; z-index:100; backdrop-filter:blur(6px); opacity:0; transition:opacity .25s ease; }
-    .modal.show{ opacity:1; }
-    .modal-content{ background:#fff; padding:1.5rem 2rem; border-radius:1rem; box-shadow:0 10px 25px rgba(0,0,0,.2); width:90%; max-width:720px; position:relative; transform:scale(.9); transition:transform .22s ease, opacity .22s ease; opacity:0; }
-    .modal.show .modal-content{ transform:scale(1); opacity:1; }
-    .detail-content-box{ white-space:pre-wrap; word-break:break-word; max-height:60vh; overflow-y:auto; }
-
-    #toast{ position:fixed; bottom:40px; left:50%; transform:translateX(-50%) translateY(10px); background:rgba(55,65,81,.6); backdrop-filter:blur(8px); color:#fff; padding:.9rem 1.6rem; border-radius:9999px; font-size:.9rem; box-shadow:0 5px 15px rgba(0,0,0,.25); opacity:0; pointer-events:none; transition:all .45s ease; z-index:999; }
-    #toast.show{ opacity:1; transform:translateX(-50%) translateY(-6px); }
-
-    :root{ color-scheme: light dark; }
-    html.dark, body.dark{ background-color:#111827; }
-    .dark .bg-white{ background-color:rgba(31,41,55,.88)!important; color:#e5e7eb; }
-    .dark h1,.dark h2,.dark .text-gray-800{ color:#e5e7eb!important; }
-    .dark .text-gray-700{ color:#d1d5db!important; }
-    .dark input,.dark textarea{ background:rgba(31,41,55,.7); color:#e5e7eb; border-color:rgba(255,255,255,.15); }
-    .dark .prompt-card{ background:rgba(31,41,55,.72); color:#e5e7eb; border:1px solid rgba(255,255,255,.12); box-shadow:0 0 12px rgba(255,255,255,.06); }
-    .dark .prompt-title{ color:#f3f4f6; } .dark .prompt-date{ color:#9ca3af; }
-    .dark .modal-content{ background:rgba(31,41,55,.95); color:#f3f4f6; }
-    .dark #toast{ background:rgba(243,244,246,.1); }
-
-    /* ===== 项目侧栏（拖拽目标） ===== */
-    .project-item{ display:flex; align-items:center; justify-content:space-between; padding:.6rem .8rem; border-radius:.8rem; border:1px dashed rgba(0,0,0,.08); background:rgba(255,255,255,.6); transition:background .2s ease, border-color .2s ease, transform .15s ease; }
-    .project-item:hover{ background:rgba(255,255,255,.9); }
-    .project-item.active{ border-style:solid; border-color:rgba(79,70,229,.5); box-shadow:0 8px 18px rgba(79,70,229,.12); }
-    .project-item.drop-target{ background:rgba(79,70,229,.08); border-color:rgba(79,70,229,.6); transform:scale(1.01); }
-    .dark .project-item{ background:rgba(31,41,55,.55); border-color:rgba(255,255,255,.12); }
-    .dark .project-item:hover{ background:rgba(31,41,55,.85); }
-    .dark .project-item.drop-target{ background:rgba(139,92,246,.15); border-color:rgba(139,92,246,.6); }
-
-    /* ===== 账号徽章（渐变色，非大红） ===== */
-    .id-badge{ display:inline-flex; align-items:center; gap:.5rem; padding:.35rem .7rem; border-radius:9999px; font-weight:600;
-      background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #ec4899 100%); color:#fff; box-shadow:0 6px 16px rgba(99,102,241,.25); }
-    .id-edit-btn{ font-size:.75rem; padding:.25rem .5rem; border-radius:.6rem; background:rgba(255,255,255,.2); color:#fff; }
-    .id-edit-btn:hover{ background:rgba(255,255,255,.32); }
-
-    .app-grid{ display:grid; grid-template-columns:1fr; gap:1rem; }
-    @media (min-width:1024px){ .app-grid{ grid-template-columns:280px 1fr; } }
+    :root { color-scheme: dark; }
+    body{ font-family: Inter, ui-sans-serif, system-ui, -apple-system; }
+    /* 背景动效 */
+    @keyframes blobFloat{0%{transform:translate3d(0,0,0) scale(1)}100%{transform:translate3d(3vw,-2vh,0) scale(1.06)}}
   </style>
 </head>
-<body class="bg-transparent">
-
-  <!-- 背景 -->
-  <div id="bg-layer" aria-hidden="true">
-    <div class="bg-gradient"></div>
-    <div class="bg-grid"></div>
-    <div class="blob blob-1"></div><div class="blob blob-2"></div><div class="blob blob-3"></div>
-  </div>
-  <!-- 吉祥物层（✅ 恢复动画） -->
-  <div id="mascot-layer" aria-hidden="true"></div>
-
-  <div id="app-container" class="w-full max-w-6xl space-y-4 relative z-10">
-    <h1 class="text-4xl font-bold text-center text-gray-800">我的 Prompt 知识库</h1>
-
-    <!-- 顶部：主题切换 + 账号信息 -->
-    <div class="flex flex-col sm:flex-row items-center justify-between gap-3">
-      <div class="flex items-center gap-3">
-        <button id="theme-toggle"
-          class="py-2 px-4 bg-gray-200 text-gray-800 rounded-xl transition-all duration-300 shadow-sm hover:shadow-md text-sm font-medium">
-          🌞 切换暗色模式
-        </button>
-      </div>
-
-      <div class="flex items-center gap-3">
-        <div class="flex items-center gap-2">
-          <span class="text-sm text-gray-600">当前身份：</span>
-          <span id="display-id-badge" class="id-badge">未登录</span>
-          <button id="edit-id-btn" class="id-edit-btn hidden">编辑ID</button>
-        </div>
-        <button id="auth-button"
-          class="py-2 px-4 bg-secondary text-white font-semibold rounded-xl hover:bg-purple-700 transition duration-300 shadow-md text-sm">
-          登录 / 注册
-        </button>
-      </div>
-    </div>
-
-    <!-- 错误提示 -->
-    <div id="error-message" class="hidden bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-xl" role="alert">
-      <strong class="font-bold">错误:</strong>
-      <span id="error-text" class="block sm:inline"></span>
-    </div>
-
-    <!-- 主布局：项目侧栏 + 主内容 -->
-    <div class="app-grid">
-      <!-- 左：项目侧栏 -->
-      <aside class="bg-white dark:bg-opacity-60 p-5 shadow-xl rounded-2xl border border-gray-200 dark:border-white/10">
-        <div class="flex items-center justify-between mb-3">
-          <h2 class="text-xl font-semibold text-gray-700">项目</h2>
-        </div>
-
-        <form id="create-project-form" class="flex gap-2 mb-4">
-          <input id="project-name-input" class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary"
-                 placeholder="新项目名称（无限制）" />
-          <button class="px-3 py-2 bg-primary text-white rounded-lg hover:bg-indigo-700">创建</button>
-        </form>
-
-        <div class="space-y-2">
-          <div class="project-item active" data-id="all">
-            <span>全部</span>
-            <span id="count-all" class="text-xs text-gray-500">0</span>
-          </div>
-          <div class="project-item" data-id="unassigned">
-            <span>未归档</span>
-            <span id="count-unassigned" class="text-xs text-gray-500">0</span>
-          </div>
-          <div id="projects-list" class="space-y-2 mt-2"></div>
-        </div>
-      </aside>
-
-      <!-- 右：主内容 -->
-      <main class="space-y-6">
-        <!-- 添加 Prompt -->
-        <div class="bg-white p-6 md:p-8 shadow-xl rounded-2xl border border-gray-200 dark:border-white/10">
-          <h2 class="text-2xl font-semibold text-gray-700 mb-4">添加新的 Prompt</h2>
-          <form id="add-prompt-form" class="space-y-4">
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1" for="prompt-title">标题</label>
-              <input id="prompt-title" required class="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-primary focus:border-primary" placeholder="输入简短的标题">
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1" for="prompt-tags">标签 (逗号分隔)</label>
-              <input id="prompt-tags" class="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-primary focus:border-primary" placeholder="例如: 科技, 旅游, 总结">
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1" for="prompt-content">Prompt 内容</label>
-              <textarea id="prompt-content" rows="4" required class="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-primary focus:border-primary" placeholder="输入完整的 Prompt 文本..."></textarea>
-            </div>
-            <button id="add-prompt-btn" class="w-full py-2 px-4 bg-primary text-white font-semibold rounded-xl hover:bg-indigo-700 transition duration-300 shadow-md">
-              <span id="btn-text">保存 Prompt</span>
-              <span id="btn-loading" class="hidden">保存中...</span>
-            </button>
-          </form>
-        </div>
-
-        <!-- 搜索 + 列表 -->
-        <div class="space-y-6">
-          <div class="bg-white p-6 md:p-8 shadow-xl rounded-2xl border border-gray-200 dark:border-white/10">
-            <h2 class="text-2xl font-semibold text-gray-700 mb-4">搜索 Prompt</h2>
-            <input id="search-input" placeholder="输入关键词搜索 (标题, 内容或标签)..." class="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-primary focus:border-primary">
-          </div>
-
-          <div id="prompt-list-container" class="min-h-[200px]">
-            <p id="loading-indicator" class="text-gray-500">加载中...</p>
-          </div>
-          <p id="no-results" class="hidden text-center text-gray-500 mt-2">没有找到匹配的 Prompt。</p>
-        </div>
-      </main>
-    </div>
+<body class="min-h-screen text-white bg-gradient-to-b from-[#0b1220] via-[#0e1530] to-[#0b1220]">
+  <!-- 背景层 -->
+  <div class="pointer-events-none fixed inset-0 -z-10">
+    <div class="absolute inset-0" style="background:
+      radial-gradient(1200px 800px at 10% 5%, rgba(31,41,55,1) 0%, rgba(31,41,55,0) 35%),
+      radial-gradient(900px 700px at 85% 15%, rgba(55,48,163,0.35) 0%, rgba(55,48,163,0) 45%),
+      radial-gradient(900px 700px at 20% 85%, rgba(16,185,129,0.25) 0%, rgba(16,185,129,0) 40%),
+      linear-gradient(180deg,#0b1220 0%, #0f172a 45%, #111827 100%)
+    "></div>
+    <div class="absolute inset-0 opacity-20" style="background-image:
+      linear-gradient(to right, rgba(255,255,255,.05) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(255,255,255,.05) 1px, transparent 1px);
+      background-size:28px 28px;"></div>
+    <div class="absolute w-[38vw] h-[38vw] max-w-[680px] max-h-[680px] rounded-full blur-[40px] opacity-70 mix-blend-multiply bg-gradient-to-br from-indigo-400 to-blue-400 animate-[blobFloat_16s_ease-in-out_infinite_alternate] -top-[10vh] -left-[10vw]"></div>
+    <div class="absolute w-[38vw] h-[38vw] max-w-[680px] max-h-[680px] rounded-full blur-[40px] opacity-70 mix-blend-multiply bg-gradient-to-br from-amber-400 to-rose-500 animate-[blobFloat_16s_ease-in-out_infinite_alternate] top-[20vh] -right-[12vw]" style="animation-delay:.6s"></div>
+    <div class="absolute w-[38vw] h-[38vw] max-w-[680px] max-h-[680px] rounded-full blur-[40px] opacity-70 mix-blend-multiply bg-gradient-to-br from-emerald-400 to-cyan-400 animate-[blobFloat_16s_ease-in-out_infinite_alternate] -bottom-[12vh] left-[20vw]" style="animation-delay:1.2s"></div>
   </div>
 
-  <!-- 登录/注册 Modal -->
-  <div id="auth-modal" class="modal hidden">
-    <div id="auth-modal-content" class="modal-content">
-      <h2 id="modal-title" class="text-2xl font-semibold text-gray-700 mb-4 text-center">用户登录</h2>
-      <form id="auth-form" class="space-y-4">
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1" for="email">邮箱地址</label>
-          <input id="email" type="email" required class="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-primary focus:border-primary" placeholder="输入邮箱">
-        </div>
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1" for="password">密码</label>
-          <input id="password" type="password" required class="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-primary focus:border-primary" placeholder="输入密码 (至少6位)">
-        </div>
-        <button id="modal-submit-btn" class="w-full py-2 px-4 bg-primary text-white font-semibold rounded-xl hover:bg-indigo-700 transition duration-300 shadow-md">登录</button>
-      </form>
-      <button id="toggle-mode-btn" class="w-full mt-3 text-sm text-primary hover:text-indigo-700 font-medium">切换到注册模式</button>
-      <button id="close-auth-modal-btn" class="absolute top-3 right-3 text-gray-500 hover:text-gray-800">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-      </button>
-    </div>
-  </div>
+  <div id="root"></div>
 
-  <!-- 详情 Modal -->
-  <div id="detail-modal" class="modal hidden">
-    <div id="detail-modal-content" class="modal-content">
-      <h2 id="detail-title" class="text-2xl font-bold text-gray-800 mb-3">Prompt 标题</h2>
-      <div id="detail-tags" class="flex flex-wrap gap-2 mb-2"></div>
-      <div id="detail-content" class="detail-content-box custom-scroll bg-gray-50 p-4 rounded-xl text-gray-700 text-sm border border-gray-200">完整的 Prompt 内容将显示在这里。</div>
-      <div class="flex justify-between items-center mt-4">
-        <div id="detail-date" class="text-xs text-gray-400"></div>
-        <div class="flex gap-2">
-          <button id="detail-copy-btn" class="py-2 px-4 bg-primary text-white font-semibold rounded-xl hover:bg-indigo-700 transition duration-300 shadow-md text-sm">复制完整 Prompt</button>
-          <button id="detail-delete-btn" class="py-2 px-4 bg-red-500 text-white font-semibold rounded-xl hover:bg-red-600 transition duration-300 shadow-md text-sm">删除</button>
-          <button id="close-detail-modal-btn" class="py-2 px-4 bg-gray-300 text-gray-700 font-semibold rounded-xl hover:bg-gray-400 transition duration-300 text-sm">关闭</button>
-        </div>
-      </div>
-      <button id="close-detail-modal-icon" class="absolute top-3 right-3 text-gray-500 hover:text-gray-800">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-      </button>
-    </div>
-  </div>
+  <script type="text/babel">
+    const { useEffect, useMemo, useState } = React;
 
-  <!-- 编辑ID Modal -->
-  <div id="id-modal" class="modal hidden">
-    <div class="modal-content">
-      <h2 class="text-xl font-semibold mb-3">设置我的 ID</h2>
-      <p class="text-sm text-gray-500 mb-3">此 ID 仅用于显示（不会暴露邮箱），支持中英文与数字下划线。</p>
-      <form id="id-form" class="flex gap-2">
-        <input id="id-input" class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary" placeholder="例如：Taylor 或 乐恒_Taylor">
-        <button class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-indigo-700">保存</button>
-      </form>
-      <button id="close-id-modal" class="absolute top-3 right-3 text-gray-500 hover:text-gray-800">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-      </button>
-    </div>
-  </div>
+    // ---------------- 工具 ----------------
+    const uid = () => Math.random().toString(36).slice(2) + Date.now().toString(36);
 
-  <!-- Toast -->
-  <div id="toast"></div>
+    function autoSummarize(text){
+      if(!text) return '';
+      const clean = text.replace(/\\s+/g,' ').trim();
+      const first = clean.split(/[。.!?；;]\\s*/)[0] || clean.slice(0,80);
+      const words = clean.toLowerCase().match(/[\\p{L}\\p{N}_\\-]{2,}/gu) || [];
+      const stop = new Set(['the','and','for','with','that','this','you','your','我们','以及','的是','可以','如何','一个','提示','prompt','内容']);
+      const freq = {};
+      words.forEach(w=>{ if(!stop.has(w)) freq[w]=(freq[w]||0)+1; });
+      const top = Object.entries(freq).sort((a,b)=>b[1]-a[1]).slice(0,4).map(x=>x[0]);
+      let res = first;
+      if(top.length) res += ' ｜ 关键词：' + top.join('、');
+      return res.slice(0,84);
+    }
 
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-    import {
-      getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, signOut,
-      createUserWithEmailAndPassword, signInWithEmailAndPassword, setPersistence, browserLocalPersistence
-    } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-    import {
-      getFirestore, collection, addDoc, query, onSnapshot, serverTimestamp,
-      doc, deleteDoc, setDoc, getDoc, updateDoc, deleteField
-    } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-    /* ===== 全局状态 ===== */
-    let db, auth, userId=null, isEmailSignedIn=false, authMode='login';
-    let allPrompts=[], allProjects=[], unsubscribePrompts=null, unsubscribeProjects=null, selectedProjectId='all', currentDetailId=null;
-
-    /* ===== Firebase 配置（沿用你原文件） ===== */
-    const YOUR_FIREBASE_CONFIG = {
-      apiKey:"AIzaSyBePfEThajXkfixYc-oUl9m8htKcXRuuI8",
-      authDomain:"prompt-29d34.firebaseapp.com",
-      projectId:"prompt-29d34",
-      storageBucket:"prompt-29d34.firebasestorage.app",
-      messagingSenderId:"2282413195",
-      appId:"1:2282413195:web:1ecae5e1a116be239b488e",
-      measurementId:"G-R7TW7M0L5M"
+    const SYNONYMS = {
+      "外贸": ["国际贸易","B2B","出口","海关","贸易"],
+      "客户开发": ["获客","线索","sales prospecting","开发信","跟进"],
+      "邮件": ["email","电邮","邮件模板","邮件主题"],
+      "天线": ["antenna","GPS","GNSS","4G","5G","LoRa","WiFi","卫星"],
+      "视频": ["短视频","抖音","剪辑","脚本","分镜","TikTok"],
+      "英文": ["英语","English","口语","翻译"],
+      "搜索": ["查找","检索","语义","模糊匹配","相关性"],
+      "标签": ["tag","分类","归档"]
     };
-    const appId="default-standalone-app";
-    const firebaseConfig = (typeof __firebase_config!=='undefined' && Object.keys(JSON.parse(__firebase_config)).length>0)
-      ? JSON.parse(__firebase_config) : YOUR_FIREBASE_CONFIG;
-    const initialAuthToken = (typeof __initial_auth_token!=='undefined') ? __initial_auth_token : null;
-
-    /* ===== DOM ===== */
-    const errorEl=document.getElementById('error-message');
-    const errorTextEl=document.getElementById('error-text');
-    const authButton=document.getElementById('auth-button');
-    const themeToggle=document.getElementById('theme-toggle');
-
-    const displayIdBadge=document.getElementById('display-id-badge');
-    const editIdBtn=document.getElementById('edit-id-btn');
-    const idModal=document.getElementById('id-modal');
-    const idInput=document.getElementById('id-input');
-    const idForm=document.getElementById('id-form');
-    const closeIdModal=document.getElementById('close-id-modal');
-
-    const createProjectForm=document.getElementById('create-project-form');
-    const projectNameInput=document.getElementById('project-name-input');
-    const projectsListEl=document.getElementById('projects-list');
-    const countAllEl=document.getElementById('count-all');
-    const countUnassignedEl=document.getElementById('count-unassigned');
-
-    const promptListContainer=document.getElementById('prompt-list-container');
-    const loadingIndicatorEl=document.getElementById('loading-indicator');
-    const noResultsEl=document.getElementById('no-results');
-    const addPromptForm=document.getElementById('add-prompt-form');
-    const addPromptBtn=document.getElementById('add-prompt-btn');
-    const btnText=document.getElementById('btn-text');
-    const btnLoading=document.getElementById('btn-loading');
-    const searchInput=document.getElementById('search-input');
-
-    const authModal=document.getElementById('auth-modal');
-    const authForm=document.getElementById('auth-form');
-    const modalTitle=document.getElementById('modal-title');
-    const modalSubmitBtn=document.getElementById('modal-submit-btn');
-    const toggleModeBtn=document.getElementById('toggle-mode-btn');
-    const closeModalBtn=document.getElementById('close-auth-modal-btn');
-    const emailInput=document.getElementById('email');
-    const passwordInput=document.getElementById('password');
-
-    const detailModal=document.getElementById('detail-modal');
-    const detailTitle=document.getElementById('detail-title');
-    const detailTags=document.getElementById('detail-tags');
-    const detailContent=document.getElementById('detail-content');
-    const detailCopyBtn=document.getElementById('detail-copy-btn');
-    const detailDeleteBtn=document.getElementById('detail-delete-btn');
-    const closeDetailModalBtn=document.getElementById('close-detail-modal-btn');
-    const closeDetailModalIcon=document.getElementById('close-detail-modal-icon');
-    const detailDate=document.getElementById('detail-date');
-
-    const toastEl=document.getElementById('toast');
-
-    /* ===== 工具函数 ===== */
-    function showError(msg){ errorTextEl.textContent=msg; errorEl.classList.remove('hidden'); loadingIndicatorEl.textContent='加载失败。'; }
-    function showToast(msg){ toastEl.textContent=msg; toastEl.classList.add('show'); setTimeout(()=>toastEl.classList.remove('show'),1800); }
-
-    // 主题
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    function applyTheme(){
-      const saved=localStorage.getItem('theme'); const isDark=saved? saved==='dark' : prefersDark;
-      document.documentElement.classList.toggle('dark', isDark); document.body.classList.toggle('dark', isDark);
-      themeToggle.textContent = isDark? '🌙 切换亮色模式' : '🌞 切换暗色模式';
+    function expandQuery(q){
+      const bag = new Set([q]);
+      Object.entries(SYNONYMS).forEach(([k,arr])=>{
+        if(q.includes(k)) arr.forEach(s=>bag.add(s));
+        if(arr.some(v=>q.includes(v))) bag.add(k);
+      });
+      return Array.from(bag);
     }
-    applyTheme();
-    themeToggle.addEventListener('click', ()=>{
-      const willDark = !document.documentElement.classList.contains('dark');
-      document.documentElement.classList.toggle('dark', willDark); document.body.classList.toggle('dark', willDark);
-      themeToggle.textContent = willDark? '🌙 切换亮色模式' : '🌞 切换暗色模式'; localStorage.setItem('theme', willDark?'dark':'light');
-    });
 
-    /* ===== 吉祥物生成（恢复动画） ===== */
-    function spawnMascots(n=3){
-      const layer=document.getElementById('mascot-layer');
-      if(!layer) return;
-      layer.innerHTML='';
-      for(let i=0;i<n;i++){
-        const m=document.createElement('div'); m.className='mascot';
-        const baseY = 60 + Math.random()*120;
-        const duration = 22 + Math.random()*12;
-        const delay = Math.random()*-duration;
-        m.style.bottom = baseY + 'px';
-        m.style.animationDuration = duration + 's';
-        m.style.animationDelay = delay + 's';
-        m.innerHTML = `
-          <div class="body"></div>
-          <div class="strap"></div>
-          <div class="goggle">
-            <div class="eyelid"></div>
-            <div class="pupil"></div>
+    // -------------- 本地存储 Hook --------------
+    function useLocalState(key, initial){
+      const [state, setState] = useState(()=>{
+        try{ const raw = localStorage.getItem(key); return raw? JSON.parse(raw): initial; } catch { return initial; }
+      });
+      useEffect(()=>{ try{ localStorage.setItem(key, JSON.stringify(state)); }catch{} }, [key, state]);
+      return [state, setState];
+    }
+
+    // -------------- Firebase Auth --------------
+    // TODO: 将下面的 firebaseConfig 替换为你的 Firebase 项目配置
+    // For Firebase JS SDK v7.20.0 and later, measurementId is optional
+const firebaseConfig = {
+  apiKey: "AIzaSyBePfEThajXkfixYc-oUl9m8htKcXRuuI8",
+  authDomain: "prompt-29d34.firebaseapp.com",
+  projectId: "prompt-29d34",
+  storageBucket: "prompt-29d34.firebasestorage.app",
+  messagingSenderId: "2282413195",
+  appId: "1:2282413195:web:1ecae5e1a116be239b488e",
+  measurementId: "G-R7TW7M0L5M"
+};
+    let app, auth;
+    try {
+      app = firebase.initializeApp(firebaseConfig);
+      auth = firebase.auth();
+    } catch (e) {
+      console.warn("Firebase 初始化失败：请填写正确的 firebaseConfig。", e);
+    }
+
+    // -------------- 玻璃卡片 --------------
+    const GlassCard = ({ children, className='' }) => (
+      <div className={'rounded-2xl border border-white/20 bg-white/10 backdrop-blur-xl shadow-xl ' + className}>{children}</div>
+    );
+
+    const Badge = ({ children }) => (
+      <span className="px-2 py-0.5 rounded-full text-xs bg白/20 text白/90 border border白/30">{children}</span>
+    );
+
+    const IconButton = ({ title, onClick, children }) => (
+      <button title={title} onClick={onClick}
+        className="inline-flex items-center justify-center rounded-lg border border-white/10 bg-white/20 hover:bg-white/30 text-white/90 px-2.5 py-2 shadow-sm transition-transform active:scale-95">
+        {children}
+      </button>
+    );
+
+    const PrimaryButton = ({ children, onClick }) => (
+      <button onClick={onClick} className="px-4 py-2 rounded-xl bg-indigo-500/90 hover:bg-indigo-500 text-white font-semibold shadow-lg shadow-indigo-500/20">
+        {children}
+      </button>
+    );
+
+    // -------------- 主应用 --------------
+    function App(){
+      // Auth 状态
+      const [user, setUser] = useState(null);
+      const [authReady, setAuthReady] = useState(false);
+      const [showAuth, setShowAuth] = useState(false);
+      const [authMode, setAuthMode] = useState('login'); // login | register
+
+      useEffect(()=>{
+        if(!auth) { setAuthReady(true); return; }
+        const unsub = auth.onAuthStateChanged(u=>{ setUser(u); setAuthReady(true); });
+        return ()=>unsub && unsub();
+      }, []);
+
+      // 数据
+      const [projects, setProjects] = useLocalState('rx_projects', [{ id:'default', name:'默认项目' }]);
+      const [prompts, setPrompts] = useLocalState('rx_prompts', []);
+
+      // UI 状态
+      const [selectedProjectId, setSelectedProjectId] = useState('all');
+      const [search, setSearch] = useState('');
+      const [sort, setSort] = useState('newest');
+      const [showCreate, setShowCreate] = useState(false);
+      const [editing, setEditing] = useState(null);
+      const [detail, setDetail] = useState(null);
+      const [suggestions, setSuggestions] = useState([]);
+
+      // Fuse 索引
+      const fuse = React.useMemo(()=>{
+        return new Fuse(prompts, {
+          includeScore:true, shouldSort:true, threshold:0.32,
+          keys:[
+            { name:'title', weight:0.5 },
+            { name:'content', weight:0.45 },
+            { name:'summary', weight:0.25 },
+            { name:'projectName', getFn:(p)=> projects.find(x=>x.id===p.projectId)?.name || '', weight:0.1 }
+          ]
+        });
+      }, [prompts, projects]);
+
+      // 联想词
+      useEffect(()=>{
+        const q = search.trim(); if(!q) return setSuggestions([]);
+        setSuggestions(expandQuery(q).slice(1,7));
+      }, [search]);
+
+      // 过滤排序
+      const filtered = useMemo(()=>{
+        let data = prompts.slice();
+        if(selectedProjectId==='favorites') data = data.filter(p=>p.favorite);
+        else if(selectedProjectId==='unassigned') data = data.filter(p=>!p.projectId);
+        else if(selectedProjectId!=='all') data = data.filter(p=>p.projectId===selectedProjectId);
+
+        const term = search.trim().toLowerCase();
+        if(term){
+          const expanded = expandQuery(term).join(' ');
+          const ids = new Set(fuse.search(expanded).map(r=>r.item.id));
+          data = data.filter(p=>ids.has(p.id));
+        }
+
+        switch (sort) {
+          case 'newest': data.sort((a,b)=>(b.createdAt||0)-(a.createdAt||0)); break;
+          case 'oldest': data.sort((a,b)=>(a.createdAt||0)-(b.createdAt||0)); break;
+          case 'title-az': data.sort((a,b)=>(a.title||'').localeCompare(b.title||'')); break;
+          case 'title-za': data.sort((a,b)=>(b.title||'').localeCompare(a.title||'')); break;
+        }
+        return data;
+      }, [prompts, selectedProjectId, search, sort, fuse]);
+
+      // 统计
+      const countAll = prompts.length;
+      const countFav = prompts.filter(p=>p.favorite).length;
+      const countUnassigned = prompts.filter(p=>!p.projectId).length;
+
+      // CRUD
+      function createProject(name){
+        if(!name?.trim()) return;
+        setProjects(arr=>[...arr, { id:uid(), name:name.trim() }]);
+      }
+      function createPrompt({title, content, projectId}){
+        const now = Date.now();
+        const p = { id:uid(), title, content, projectId:projectId||null, favorite:false, createdAt:now, summary:autoSummarize(content) };
+        setPrompts(arr=>[p, ...arr]);
+      }
+      function updatePrompt(id, patch){
+        setPrompts(arr=>arr.map(p=> p.id===id ? {...p, ...patch, summary: (patch.content? autoSummarize(patch.content): (patch.summary ?? p.summary))} : p));
+      }
+      function deletePrompt(id){ setPrompts(arr=>arr.filter(p=>p.id!==id)); }
+
+      // 初次示例
+      useEffect(()=>{
+        if(prompts.length===0){
+          setPrompts([
+            { id:uid(), title:'外贸开发信（简洁型）', content:'Write a concise cold email to a buyer in antenna industry. Include 2 SKUs and 1 sentence social proof.', projectId:'default', favorite:true, createdAt:Date.now()-3600e3, summary:'外贸开发信模板，包含2个SKU与社证明句。' },
+            { id:uid(), title:'英文口语视频脚本（60秒）', content:'Create a 60s script for English speaking practice. Mid-speed, native expressions, call to action at end.', projectId:null, favorite:false, createdAt:Date.now()-30e3, summary:'60秒口语训练脚本，偏中速、地道表达，收尾有CTA。' }
+          ]);
+        }
+      }, []);
+
+      // PWA 注册
+      useEffect(()=>{
+        if('serviceWorker' in navigator){
+          window.addEventListener('load', ()=>{
+            navigator.serviceWorker.register('sw.js').catch(()=>{});
+          });
+        }
+      }, []);
+
+      return (
+        <div className="relative">
+          {/* 顶栏 */}
+          <header className="sticky top-0 z-30 backdrop-blur-xl bg白/5 border-b border白/10">
+            <div className="max-w-7xl mx-auto px-4 py-3 flex items-center gap-4">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-400 to-fuchsia-500 shadow-lg" />
+                <div className="font-semibold tracking-wide">奥利给！</div>
+                <div className="hidden sm:flex items-center gap-2 text-white/70">
+                  <Badge>React</Badge>
+                  <Badge>语义搜索</Badge>
+                  <Badge>自动摘要</Badge>
+                </div>
+              </div>
+              <div className="ml-auto flex items-center gap-2">
+                {authReady && auth
+                  ? user
+                    ? <>
+                        <span className="text-xs text-white/70 hidden sm:inline">已登录：{user.email}</span>
+                        <button onClick={()=>auth.signOut()} className="px-3 py-1.5 rounded-lg bg白/10 border border白/20">退出</button>
+                      </>
+                    : <button onClick={()=>setShowAuth(true)} className="px-3 py-1.5 rounded-lg bg-indigo-500/90 hover:bg-indigo-500">登录 / 注册</button>
+                  : <span className="text-xs text-white/60">（未启用 Firebase）</span>
+                }
+                <PrimaryButton onClick={()=>setShowCreate(true)}>新建 Prompt</PrimaryButton>
+              </div>
+            </div>
+          </header>
+
+          {/* 主体 */}
+          <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-[270px,1fr] gap-4 px-4 py-6">
+            {/* 侧边栏 */}
+            <GlassCard className="p-4 lg:h-[calc(100vh-120px)] lg:sticky lg:top-[84px]">
+              <h2 className="text-lg font-semibold mb-3">项目 / 视图</h2>
+              <nav className="space-y-2">
+                <SidebarItem active={selectedProjectId==='all'} label="全部" count={countAll} onClick={()=>setSelectedProjectId('all')} />
+                <SidebarItem active={selectedProjectId==='favorites'} label="❤️ 我的收藏" count={countFav} onClick={()=>setSelectedProjectId('favorites')} />
+                <SidebarItem active={selectedProjectId==='unassigned'} label="未归档" count={countUnassigned} onClick={()=>setSelectedProjectId('unassigned')} />
+                <div className="h-px bg白/10 my-2" />
+                <div className="flex items-center justify-between mb-1 text-sm text-white/70">
+                  <span>项目</span>
+                  <button onClick={()=>{ const n=prompt('新项目名称'); if(n) createProject(n); }} className="text-indigo-300 hover:text-indigo-200">+ 新建</button>
+                </div>
+                <div className="space-y-1">
+                  {projects.map(p=> (
+                    <SidebarItem key={p.id} active={selectedProjectId===p.id} label={p.name||'未命名项目'} count={prompts.filter(x=>x.projectId===p.id).length} onClick={()=>setSelectedProjectId(p.id)} />
+                  ))}
+                </div>
+              </nav>
+            </GlassCard>
+
+            {/* 内容区 */}
+            <div className="space-y-4">
+              <GlassCard className="p-4">
+                <div className="flex flex-col md:flex-row gap-3 md:items-center">
+                  <div className="flex-1">
+                    <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="输入关键词或自然语言（支持模糊/语义联想）..." className="w-full rounded-xl bg白/10 border border白/20 px-4 py-2.5 placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-indigo-400/50" />
+                    {suggestions.length>0 && (
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {suggestions.map(s=> (
+                          <button key={s} onClick={()=>setSearch(v=>(v+' '+s).trim())} className="text-xs px-2 py-1 rounded-full bg-indigo-400/15 text-indigo-200 border border-indigo-300/20 hover:bg-indigo-400/25">{s}</button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <select value={sort} onChange={e=>setSort(e.target.value)} className="md:w-52 rounded-xl bg白/10 border border白/20 px-3 py-2 focus:outline-none">
+                    <option value="newest">按最新创建</option>
+                    <option value="oldest">按最旧创建</option>
+                    <option value="title-az">按标题 (A-Z)</option>
+                    <option value="title-za">按标题 (Z-A)</option>
+                  </select>
+                </div>
+              </GlassCard>
+
+              {filtered.length===0
+                ? <EmptyState onCreate={()=>setShowCreate(true)} />
+                : <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {filtered.map(p=> (
+                      <PromptCard
+                        key={p.id}
+                        prompt={p}
+                        projectName={projects.find(x=>x.id===p.projectId)?.name}
+                        onOpen={()=>setDetail(p)}
+                        onToggleFav={()=>updatePrompt(p.id, { favorite: !p.favorite })}
+                        onCopy={()=>navigator.clipboard.writeText(p.content||'')}
+                      />
+                    ))}
+                  </div>
+              }
+            </div>
           </div>
-          <div class="hem"></div>
-        `;
-        layer.appendChild(m);
-      }
+
+          {/* 登录弹窗 */}
+          {showAuth && (
+            <Modal title={authMode==='login' ? '用户登录' : '用户注册'} onClose={()=>setShowAuth(false)}>
+              <AuthForm mode={authMode} onToggle={()=>setAuthMode(m=> m==='login' ? 'register' : 'login')} />
+            </Modal>
+          )}
+
+          {/* 创建/详情/编辑弹窗 */}
+          {showCreate && (
+            <Modal title="新建 Prompt" onClose={()=>setShowCreate(false)}>
+              <PromptEditor projects={projects} onSubmit={(data)=>{ if(data){ createPrompt(data); } setShowCreate(false); }} />
+            </Modal>
+          )}
+          {detail && (
+            <Modal title={detail.title||'(未命名)'} onClose={()=>setDetail(null)}>
+              <div className="space-y-3">
+                {detail.summary && <div className="text-sm text-white/80 bg白/5 border border白/10 rounded-lg p-3">【摘要】{detail.summary}</div>}
+                <pre className="whitespace-pre-wrap text-sm leading-relaxed text-white/90 bg白/5 border border白/10 rounded-lg p-3">{detail.content}</pre>
+                <div className="flex items-center justify-between text-xs text白/60">
+                  <span>{detail.createdAt? new Date(detail.createdAt).toLocaleString(): ''}</span>
+                  <div className="flex gap-2">
+                    <IconButton title="复制" onClick={()=>navigator.clipboard.writeText(detail.content||'')}>📋</IconButton>
+                    <IconButton title="收藏" onClick={()=>{ updatePrompt(detail.id, { favorite: !detail.favorite }); setDetail({...detail, favorite:!detail.favorite}); }}>⭐</IconButton>
+                    <IconButton title="编辑" onClick={()=>{ setEditing(detail); setDetail(null); }}>✏️</IconButton>
+                    <IconButton title="删除" onClick={()=>{ if(confirm('确定删除？')){ deletePrompt(detail.id); setDetail(null); } }}>🗑️</IconButton>
+                  </div>
+                </div>
+              </div>
+            </Modal>
+          )}
+          {editing && (
+            <Modal title="编辑 Prompt" onClose={()=>setEditing(null)}>
+              <PromptEditor
+                projects={projects}
+                initial={{ title: editing.title, content: editing.content, projectId: editing.projectId || '' }}
+                onSubmit={(data)=>{ if(data){ updatePrompt(editing.id, data); } setEditing(null); }}
+              />
+            </Modal>
+          )}
+        </div>
+      );
     }
 
-    /* ===== Firestore 路径（重要修复） =====
-       - 用户根文档：artifacts/{appId}/users/{userId}   ✅ 文档路径（偶数段）
-       - 子集合：prompts / projects                     ✅ 集合路径
-    */
-    const userDocPath     = () => userId ? `artifacts/${appId}/users/${userId}` : null;
-    const colPromptsPath  = () => userId ? `artifacts/${appId}/users/${userId}/prompts` : null;
-    const colProjectsPath = () => userId ? `artifacts/${appId}/users/${userId}/projects` : null;
+    const SidebarItem = ({ active, onClick, label, count }) => (
+      <button onClick={onClick}
+        className={'w-full flex items-center justify-between px-3 py-2 rounded-xl transition border ' + (active ? 'bg-indigo-400/20 border-indigo-300/30 text-white' : 'bg白/5 border白/10 text-white/85 hover:bg白/10')}>
+        <span className="truncate text-left">{label}</span>
+        <span className="text-xs text-white/70">{count}</span>
+      </button>
+    );
 
-    /* ===== 账号ID（displayId） ===== */
-    async function loadOrInitDisplayId(){
-      const p = userDocPath(); if(!p) return;
-      const ref = doc(db, p); // ✅ 文档路径，合法
-      let displayId = '';
-      try{
-        const snap = await getDoc(ref);
-        if(snap.exists()){
-          displayId = snap.data().displayId || '';
-        }else{
-          const fallback = (isEmailSignedIn && auth.currentUser?.email)
-            ? auth.currentUser.email.split('@')[0]
-            : 'User-'+(userId? userId.slice(-6): Math.random().toString(36).slice(-6));
-          await setDoc(ref, { displayId: fallback, updatedAt: serverTimestamp() }, { merge:true });
-          displayId = fallback;
-        }
-        renderDisplayId(displayId);
-      }catch(err){ console.error('加载ID失败:', err); showToast('⚠️ 读取显示ID失败'); }
-    }
-    function renderDisplayId(id){ document.getElementById('display-id-badge').textContent = id || '未登录'; }
-    function openIdModal(){ idInput.value = document.getElementById('display-id-badge').textContent==='未登录' ? '' : document.getElementById('display-id-badge').textContent; idModal.classList.remove('hidden'); requestAnimationFrame(()=>idModal.classList.add('show')); }
-    function closeId(){ idModal.classList.remove('show'); setTimeout(()=>idModal.classList.add('hidden'),200); }
-    document.getElementById('id-form').addEventListener('submit', async (e)=>{
-      e.preventDefault();
-      const val = idInput.value.trim(); if(!val){ showToast('请输入有效的 ID'); return; }
-      const p = userDocPath(); if(!p){ showToast('请先登录'); return; }
-      try{ await setDoc(doc(db, p), { displayId: val, updatedAt: serverTimestamp() }, { merge:true }); renderDisplayId(val); showToast('✅ 已更新 ID'); closeId(); }
-      catch(err){ console.error(err); showToast('❌ 更新失败'); }
-    });
-    document.getElementById('edit-id-btn').addEventListener('click', openIdModal);
-    document.getElementById('close-id-modal').addEventListener('click', closeId);
-    document.getElementById('id-modal').addEventListener('click', (e)=>{ if(e.target.id==='id-modal') closeId(); });
+    const PromptCard = ({ prompt, projectName, onOpen, onToggleFav, onCopy }) => (
+      <div className="group relative rounded-2xl border border白/15 bg白/10 backdrop-blur-xl p-4 shadow-lg hover:shadow-indigo-600/20 transition-transform hover:-translate-y-0.5">
+        <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition">
+          <IconButton title="收藏" onClick={(e)=>{ e.stopPropagation(); onToggleFav(); }}>{prompt.favorite ? '💛' : '⭐'}</IconButton>
+          <IconButton title="复制" onClick={(e)=>{ e.stopPropagation(); onCopy(); }}>📋</IconButton>
+        </div>
+        <div className="text-base font-semibold truncate mb-2 pr-12">{prompt.title||'(未命名)'}</div>
+        <div className="text-sm text-white/80 line-clamp-2 min-h-[2.6em]">{prompt.summary || autoSummarize(prompt.content||'')}</div>
+        <div className="mt-3 flex items-center justify-between text-xs text-white/60">
+          <span>{prompt.createdAt? new Date(prompt.createdAt).toLocaleDateString(): ''}</span>
+          <span className="truncate max-w-[50%]">{projectName? <Badge>{projectName}</Badge> : <Badge>未归档</Badge>}</span>
+        </div>
+        <button onClick={onOpen} className="mt-3 w-full rounded-lg bg白/10 hover:bg白/20 border border白/15 px-3 py-2 text-sm">查看详情</button>
+      </div>
+    );
 
-    /* ===== Auth UI ===== */
-    function updateAuthUI(){
-      if(isEmailSignedIn){
-        authButton.textContent='退出登录';
-        authButton.classList.remove('bg-secondary','hover:bg-purple-700');
-        authButton.classList.add('bg-gray-700','hover:bg-gray-800');
-        authButton.onclick=handleSignOut;
-        document.getElementById('edit-id-btn').classList.remove('hidden');
-      }else{
-        authButton.textContent='登录 / 注册';
-        authButton.classList.remove('bg-gray-700','hover:bg-gray-800');
-        authButton.classList.add('bg-secondary','hover:bg-purple-700');
-        authButton.onclick=()=>{ authModal.classList.remove('hidden'); requestAnimationFrame(()=>authModal.classList.add('show')); };
-        document.getElementById('edit-id-btn').classList.add('hidden');
-      }
-    }
+    const EmptyState = ({ onCreate }) => (
+      <GlassCard className="p-10 text-center">
+        <div className="text-4xl mb-2">🧪</div>
+        <div className="text-lg mb-2">还没有任何 Prompt</div>
+        <div className="text-white/70 mb-4">从“新建 Prompt”开始，或在上方搜索框尝试输入“外贸 客户开发 天线”。</div>
+        <PrimaryButton onClick={onCreate}>新建 Prompt</PrimaryButton>
+      </GlassCard>
+    );
 
-    /* ===== Firebase 初始化 ===== */
-    async function initFirebase(){
-      try{
-        if(!firebaseConfig || !firebaseConfig.apiKey || firebaseConfig.apiKey.includes('YOUR_API_KEY')){
-          throw new Error('Firebase 配置缺失。请填入真实配置。');
-        }
-        const app = initializeApp(firebaseConfig);
-        db = getFirestore(app);
-        auth = getAuth(app);
-
-        onAuthStateChanged(auth, async (user)=>{
-          if(user){
-            userId = user.uid;
-            isEmailSignedIn = user.providerData.some(p=>p.providerId==='password');
-            updateAuthUI();
-            spawnMascots(); // ✅ 恢复动画生成
-            await loadOrInitDisplayId();
-            watchProjects();
-            watchPrompts();
-          }else{
-            try{ await signInAnonymously(auth); }
-            catch(err){ console.error(err); showError('无法建立匿名会话'); renderPrompts([]); }
-          }
-        });
-        if(initialAuthToken && !auth.currentUser){ await signInWithCustomToken(auth, initialAuthToken); }
-      }catch(err){ console.error(err); showError('应用初始化失败: '+err.message); }
-    }
-
-    /* ===== 实时监听 ===== */
-    function watchProjects(){
-      if(unsubscribeProjects) unsubscribeProjects();
-      const path=colProjectsPath(); if(!path) return;
-      unsubscribeProjects = onSnapshot(query(collection(db, path)), (snap)=>{
-        allProjects = snap.docs.map(d=>({ id:d.id, ...d.data() }));
-        renderProjects();
-      }, (err)=>console.error(err));
-    }
-    /* ===== 项目创建 ===== */
-    createProjectForm.addEventListener('submit', async (e) => {
-      // 1. 阻止表单默认的页面刷新行为
-      e.preventDefault();
-
-      // 2. 获取并清理用户输入的项目名称
-      const projectName = projectNameInput.value.trim();
-
-      // 3. 验证：确保项目名称不为空
-      if (!projectName) {
-        showToast('⚠️ 项目名称不能为空！');
-        return;
-      }
-      
-      // 4. 验证：确保用户已登录，否则无法写入数据库
-      if (!userId) {
-        showError('用户未认证，无法创建项目。');
-        return;
-      }
-
-      // 5. 调用 Firebase API 将新项目添加到数据库
-      try {
-        const path = colProjectsPath(); // 获取项目集合的路径
-        if (!path) throw new Error('数据库路径错误，请检查登录状态。');
-
-        // 向数据库中添加一个新文档（即新项目）
-        await addDoc(collection(db, path), {
-          name: projectName,
-          createdAt: serverTimestamp() // 使用服务器时间，保证时间戳的准确性
-        });
-
-        // 6. 操作成功后的处理
-        projectNameInput.value = ''; // 清空输入框
-        showToast('✅ 项目已成功创建！'); // 显示成功提示
-
-      } catch (err) {
-        // 7. 错误处理
-        console.error("创建项目失败: ", err);
-        showError('创建项目失败: ' + err.message);
-      }
-    });
-    function watchPrompts(){
-      if(unsubscribePrompts) unsubscribePrompts();
-      const path=colPromptsPath(); if(!path) return;
-      unsubscribePrompts = onSnapshot(query(collection(db, path)), (snap)=>{
-        loadingIndicatorEl.classList.add('hidden');
-        allPrompts = snap.docs.map(d=>({ id:d.id, ...d.data(), tags:d.data().tags||[] }));
-        allPrompts.sort((a,b)=>(b.timestamp?.seconds||0)-(a.timestamp?.seconds||0));
-        updateCounts();
-        filterAndRenderPrompts(searchInput.value.toLowerCase());
-      }, (err)=>{ console.error(err); showError('数据实时同步失败: '+err.message); });
-    }
-
-    /* ===== 项目渲染与交互 ===== */
-    function projectCount(id){
-      if(id==='all') return allPrompts.length;
-      if(id==='unassigned') return allPrompts.filter(p=>!p.projectId).length;
-      return allPrompts.filter(p=>p.projectId===id).length;
-    }
-    function updateCounts(){
-      countAllEl.textContent = projectCount('all');
-      countUnassignedEl.textContent = projectCount('unassigned');
-      document.querySelectorAll('[data-project-count]').forEach(el=>{
-        const pid = el.getAttribute('data-project-count');
-        el.textContent = projectCount(pid);
-      });
-    }
-    function renderProjects(){
-      projectsListEl.innerHTML='';
-      allProjects.forEach(p=>{
-        const li=document.createElement('div');
-        li.className='project-item';
-        li.setAttribute('data-id', p.id);
-        li.innerHTML = `
-          <span class="truncate">${p.name||'(未命名项目)'}</span>
-          <span class="text-xs text-gray-500" data-project-count="${p.id}">${projectCount(p.id)}</span>
-        `;
-        li.addEventListener('click', ()=>selectProject(p.id));
-        makeDropTarget(li, p.id);
-        projectsListEl.appendChild(li);
-      });
-      // 固定入口也可拖拽
-      document.querySelectorAll('.project-item[data-id="all"], .project-item[data-id="unassigned"]').forEach(el=>{
-        makeDropTarget(el, el.getAttribute('data-id'));
-        el.addEventListener('click', ()=>selectProject(el.getAttribute('data-id')));
-      });
-      highlightActiveProject();
-      updateCounts();
-    }
-    function selectProject(pid){
-      selectedProjectId = pid;
-      highlightActiveProject();
-      filterAndRenderPrompts(searchInput.value.toLowerCase());
-    }
-    function highlightActiveProject(){
-      document.querySelectorAll('.project-item').forEach(el=>{
-        const id = el.getAttribute('data-id');
-        el.classList.toggle('active', id===selectedProjectId);
-      });
-    }
-
-    // 拖拽目标
-    function makeDropTarget(el, targetId){
-      el.addEventListener('dragover', (e)=>{ e.preventDefault(); el.classList.add('drop-target'); });
-      el.addEventListener('dragleave', ()=> el.classList.remove('drop-target'));
-      el.addEventListener('drop', async (e)=>{
-        e.preventDefault(); el.classList.remove('drop-target');
-        const promptId = e.dataTransfer.getData('text/plain');
-        if(targetId==='all'){ showToast('ℹ️ 放到“全部”不会改变分类'); return; }
-        await movePromptToProject(promptId, targetId==='unassigned' ? null : targetId);
-      });
-    }
-
-    async function movePromptToProject(promptId, projectId){
-      try{
-        const p=colPromptsPath(); if(!p) throw new Error('路径错误');
-        const ref = doc(db, p, promptId);
-        if(projectId){ await updateDoc(ref, { projectId }); showToast('📦 已移动到项目'); }
-        else { await updateDoc(ref, { projectId: deleteField() }); showToast('🗂️ 已移出项目'); }
-      }catch(err){ console.error(err); showToast('❌ 移动失败'); }
-    }
-
-    /* ===== 列表与过滤 ===== */
-    function renderPrompts(list){
-      promptListContainer.innerHTML='';
-      if(list.length===0){
-        noResultsEl.classList.remove('hidden');
-        if(allPrompts.length===0){
-          promptListContainer.innerHTML='<p class="text-gray-500">数据库中还没有 Prompt。请使用上方的表单添加第一个！</p>';
-        }
-        return;
-      }
-      noResultsEl.classList.add('hidden');
-      list.forEach(p=>{
-        const card=document.createElement('div'); card.className='prompt-card'; card.setAttribute('draggable','true');
-        const date = p.timestamp?.seconds ? new Date(p.timestamp.seconds*1000).toLocaleDateString('zh-CN') : '';
-        card.innerHTML = `
-          <div class="prompt-title" title="${p.title||''}">${p.title||''}</div>
-          <div class="flex items-center justify-between text-xs text-gray-500">
-            <span>${date}</span>
-            ${p.projectId ? `<span class="px-2 py-0.5 rounded bg-gray-200 text-gray-600">项目</span>` : `<span class="px-2 py-0.5 rounded bg-amber-100 text-amber-700">未归档</span>`}
+    function PromptEditor({ projects, initial, onSubmit }){
+      const [title, setTitle] = useState(initial?.title||'');
+      const [content, setContent] = useState(initial?.content||'');
+      const [projectId, setProjectId] = useState(initial?.projectId||'');
+      const [summary, setSummary] = useState(()=> autoSummarize(initial?.content||''));
+      useEffect(()=>{ if(!initial) setSummary(autoSummarize(content)); }, [content]);
+      function submit(e){ e.preventDefault(); if(!title.trim() || !content.trim()) return; onSubmit({ title:title.trim(), content:content.trim(), projectId:projectId||null, summary:summary.trim()||autoSummarize(content) }); }
+      return (
+        <form onSubmit={submit} className="space-y-3">
+          <div>
+            <label className="block text-sm mb-1">标题</label>
+            <input value={title} onChange={e=>setTitle(e.target.value)} className="w-full rounded-xl bg白/10 border border白/20 px-3 py-2 focus:outline-none" placeholder="输入简短标题" required />
           </div>
-        `;
-        // 打开详情
-        card.addEventListener('click', (e)=>{ if(e.defaultPrevented) return; openDetailModal(p); });
-        // 拖拽
-        card.addEventListener('dragstart', (e)=>{ card.classList.add('dragging'); e.dataTransfer.setData('text/plain', p.id); });
-        card.addEventListener('dragend', ()=> card.classList.remove('dragging'));
-        promptListContainer.appendChild(card);
-      });
+          <div>
+            <label className="block text-sm mb-1">归属项目</label>
+            <select value={projectId} onChange={e=>setProjectId(e.target.value)} className="w-full rounded-xl bg白/10 border border白/20 px-3 py-2 focus:outline-none">
+              <option value="">未归档</option>
+              {projects.map(p=> <option key={p.id} value={p.id}>{p.name}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm mb-1">Prompt 内容</label>
+            <textarea value={content} onChange={e=>setContent(e.target.value)} rows="6" className="w-full rounded-xl bg白/10 border border白/20 px-3 py-2 focus:outline-none" placeholder="输入完整的 Prompt 文本..." required></textarea>
+          </div>
+          <div>
+            <label className="block text-sm mb-1">自动摘要（可手动修改）</label>
+            <input value={summary} onChange={e=>setSummary(e.target.value)} className="w-full rounded-xl bg白/10 border border白/20 px-3 py-2 focus:outline-none" placeholder="系统将基于内容自动生成" />
+          </div>
+          <div className="pt-2 flex items-center justify-end gap-2">
+            <button type="button" onClick={()=>onSubmit(null)} className="px-4 py-2 rounded-xl bg白/10 border border白/20">取消</button>
+            <button className="px-4 py-2 rounded-xl bg-indigo-500/90 hover:bg-indigo-500 text-white font-semibold shadow-lg shadow-indigo-500/20">保存</button>
+          </div>
+        </form>
+      );
     }
 
-    function filterAndRenderPrompts(term){
-      term=(term||'').trim().toLowerCase();
-      let data = allPrompts;
+    const Modal = ({ title, children, onClose }) => (
+      <div className="fixed inset-0 z-40 grid place-items-center bg-black/40 p-4" onClick={onClose}>
+        <div className="w-full max-w-2xl rounded-2xl border border白/20 bg-[#0e1530]/95 backdrop-blur-xl p-5 shadow-2xl" onClick={(e)=>e.stopPropagation()}>
+          <div className="flex items-center justify-between mb-3">
+            <div className="text-lg font-semibold">{title}</div>
+            <button onClick={onClose} className="text-white/70 hover:text-white">✕</button>
+          </div>
+          {children}
+        </div>
+      </div>
+    );
 
-      // 项目过滤
-      if(selectedProjectId==='unassigned') data = data.filter(p=>!p.projectId);
-      else if(selectedProjectId!=='all') data = data.filter(p=>p.projectId===selectedProjectId);
-
-      // 搜索过滤
-      if(term){
-        data = data.filter(p=>{
-          const t=(p.title||'').toLowerCase(), c=(p.content||'').toLowerCase();
-          const tagHit=(p.tags||[]).some(x=>(x||'').toLowerCase().includes(term));
-          return t.includes(term) || c.includes(term) || tagHit;
-        });
+    // 登录/注册表单
+    function AuthForm({ mode, onToggle }){
+      const [email, setEmail] = useState('');
+      const [password, setPassword] = useState('');
+      const [error, setError] = useState('');
+      async function submit(e){
+        e.preventDefault(); setError('');
+        if(!auth){ setError('未启用 Firebase。请在 index.html 中填入 firebaseConfig。'); return; }
+        try{
+          if(mode==='login'){ await auth.signInWithEmailAndPassword(email, password); }
+          else { await auth.createUserWithEmailAndPassword(email, password); }
+        }catch(err){ setError(err.message || '操作失败'); }
       }
-      renderPrompts(data);
+      return (
+        <form onSubmit={submit} className="space-y-3">
+          <div>
+            <label className="block text-sm mb-1">邮箱</label>
+            <input value={email} onChange={e=>setEmail(e.target.value)} type="email" required className="w-full rounded-xl bg白/10 border border白/20 px-3 py-2 focus:outline-none" placeholder="you@example.com" />
+          </div>
+          <div>
+            <label className="block text-sm mb-1">密码</label>
+            <input value={password} onChange={e=>setPassword(e.target.value)} type="password" minLength="6" required className="w-full rounded-xl bg白/10 border border白/20 px-3 py-2 focus:outline-none" placeholder="至少6位" />
+          </div>
+          {error && <div className="text-sm text-rose-300">{error}</div>}
+          <div className="flex items-center justify-between pt-2">
+            <button type="button" onClick={onToggle} className="text-indigo-300 hover:text-indigo-200">{mode==='login'?'切换到注册':'切换到登录'}</button>
+            <button className="px-4 py-2 rounded-xl bg-indigo-500/90 hover:bg-indigo-500 text-white font-semibold shadow-lg shadow-indigo-500/20">{mode==='login'?'登录':'注册'}</button>
+          </div>
+        </form>
+      );
     }
 
-    /* ===== CRUD ===== */
-    addPromptForm.addEventListener('submit', async (e)=>{
-      e.preventDefault();
-      if(!userId){ showError('用户未认证，无法保存'); return; }
-      const title=document.getElementById('prompt-title').value.trim();
-      const tagsString=document.getElementById('prompt-tags').value.trim();
-      const content=document.getElementById('prompt-content').value.trim();
-      if(!title || !content){ showError('标题和内容都不能为空。'); return; }
-      const tagsArray = tagsString? tagsString.split(',').map(t=>t.trim()).filter(Boolean): [];
-      addPromptBtn.disabled=true; btnText.classList.add('hidden'); btnLoading.classList.remove('hidden');
-      try{
-        const p=colPromptsPath(); if(!p) throw new Error('路径错误');
-        await addDoc(collection(db, p), { title, content, tags:tagsArray, timestamp: serverTimestamp() });
-        addPromptForm.reset(); showToast('✅ 已保存 Prompt');
-      }catch(err){ console.error(err); showError('保存失败: '+err.message); }
-      finally{ addPromptBtn.disabled=false; btnText.classList.remove('hidden'); btnLoading.classList.add('hidden'); }
-    });
-
-    async function handleDeletePromptById(id){
-      if(!confirm('确定要删除这个 Prompt 吗？')) return;
-      if(!userId){ showToast('请先登录'); return; }
-      try{
-        const p=colPromptsPath(); if(!p) throw new Error('路径错误');
-        await deleteDoc(doc(db, p, id)); showToast('🗑️ 已删除'); closeDetailModal();
-      }catch(err){ console.error(err); showToast('❌ 删除失败'); }
-    }
-
-    /* ===== 详情弹窗 & 复制 ===== */
-    function openDetailModal(prompt){
-      currentDetailId = prompt.id || null;
-      detailTitle.textContent = prompt.title || '(未命名)';
-      detailContent.textContent = prompt.content || '';
-      detailCopyBtn.setAttribute('data-content', prompt.content || '');
-      detailTags.innerHTML='';
-      (prompt.tags||[]).forEach(tag=>{
-        const el=document.createElement('span');
-        el.className='px-3 py-1 bg-primary text-white text-xs font-medium rounded-full';
-        el.textContent=tag; detailTags.appendChild(el);
-      });
-      const d=prompt.timestamp?.seconds ? new Date(prompt.timestamp.seconds*1000) : null;
-      detailDate.textContent = d? d.toLocaleString('zh-CN') : '';
-      detailModal.classList.remove('hidden'); requestAnimationFrame(()=>detailModal.classList.add('show'));
-    }
-    function closeDetailModal(){ detailModal.classList.remove('show'); setTimeout(()=>detailModal.classList.add('hidden'),200); }
-    detailCopyBtn.addEventListener('click', async ()=>{ const c=detailCopyBtn.getAttribute('data-content')||''; try{ await navigator.clipboard.writeText(c); showToast('✅ 已复制到剪贴板'); }catch(e){ console.error(e); showToast('❌ 复制失败'); } });
-    detailDeleteBtn.addEventListener('click', ()=>{ if(currentDetailId) handleDeletePromptById(currentDetailId); });
-    closeDetailModalBtn.addEventListener('click', closeDetailModal);
-    closeDetailModalIcon.addEventListener('click', closeDetailModal);
-    detailModal.addEventListener('click', (e)=>{ if(e.target===detailModal) closeDetailModal(); });
-
-    /* ===== 登录/注册 ===== */
-    function toggleAuthMode(){
-      authMode = authMode==='login'? 'register':'login';
-      if(authMode==='login'){ modalTitle.textContent='用户登录'; modalSubmitBtn.textContent='登录'; toggleModeBtn.textContent='切换到注册模式'; }
-      else { modalTitle.textContent='用户注册'; modalSubmitBtn.textContent='注册'; toggleModeBtn.textContent='切换到登录模式'; }
-    }
-    async function handleAuthSubmit(e){
-      e.preventDefault();
-      const email=emailInput.value.trim(), password=passwordInput.value.trim();
-      if(password.length<6){ showError('密码至少6位'); return; }
-      modalSubmitBtn.disabled=true; modalSubmitBtn.textContent = authMode==='login' ? '登录中...' : '注册中...';
-      errorEl.classList.add('hidden');
-      try{
-        await setPersistence(auth, browserLocalPersistence);
-        if(authMode==='register'){ await createUserWithEmailAndPassword(auth, email, password); showToast('✅ 注册成功'); }
-        else { await signInWithEmailAndPassword(auth, email, password); showToast('✅ 登录成功'); }
-        authModal.classList.remove('show'); setTimeout(()=>authModal.classList.add('hidden'),200); authForm.reset();
-      }catch(error){
-        let msg='认证失败：';
-        switch(error.code){
-          case 'auth/invalid-email': msg+='邮箱格式无效。'; break;
-          case 'auth/user-disabled': msg+='此用户已被禁用。'; break;
-          case 'auth/user-not-found':
-          case 'auth/wrong-password': msg+='邮箱或密码错误。'; break;
-          case 'auth/email-already-in-use': msg+='该邮箱已被注册。请切换到登录模式。'; break;
-          default: msg+=error.message;
-        }
-        showError(msg);
-      }finally{ modalSubmitBtn.disabled=false; modalSubmitBtn.textContent = authMode==='login'?'登录':'注册'; }
-    }
-    async function handleSignOut(){ try{ await signOut(auth); showToast('👋 已退出登录'); } catch(e){ console.error(e); showError('退出登录失败: '+e.message); } }
-    authForm.addEventListener('submit', handleAuthSubmit);
-    toggleModeBtn.addEventListener('click', toggleAuthMode);
-    closeModalBtn.addEventListener('click', ()=>{ authModal.classList.remove('show'); setTimeout(()=>authModal.classList.add('hidden'),200); });
-    authModal.addEventListener('click', (e)=>{ if(e.target===authModal){ authModal.classList.remove('show'); setTimeout(()=>authModal.classList.add('hidden'),200); } });
-
-    // 搜索框
-    searchInput.addEventListener('input', (e)=> filterAndRenderPrompts(e.target.value.toLowerCase()));
-
-    // 启动
-    initFirebase();
-    // 初始生成 3 个小黄豆 + 自适应数量
-    spawnMascots(3);
-    window.addEventListener('resize', ()=>{
-      const w = window.innerWidth;
-      const count = w>1400 ? 5 : (w>1024 ? 4 : 3);
-      spawnMascots(count);
-    });
+    // 渲染
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
   </script>
 </body>
 </html>
