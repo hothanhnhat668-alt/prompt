@@ -1,30 +1,127 @@
-const CACHE_NAME = 'aoligei-prompt-cache-v1';
-const ASSETS = ['./', './index.html', './manifest.json'];
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>奥利给！</title>
+  <meta name="theme-color" content="#4f46e5" />
+  <link rel="manifest" href="manifest.json" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: { extend: {
+        fontFamily: { sans: ['Inter','ui-sans-serif','system-ui'] },
+        colors: { primary:'#4f46e5' }
+      } }
+    };
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone@7/babel.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/fuse.js@6.6.2"></script>
+  <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-storage-compat.js"></script>
 
-self.addEventListener('install', (event) => {
-  event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(ASSETS)));
-  self.skipWaiting();
-});
+  <style>
+    :root { color-scheme: dark; }
+    body{ font-family: Inter, ui-sans-serif, system-ui, -apple-system; }
+    /* 背景动效 */
+    @keyframes blobFloat{0%{transform:translate3d(0,0,0) scale(1)}100%{transform:translate3d(3vw,-2vh,0) scale(1.06)}}
+  </style>
+</head>
+<body class="min-h-screen text-white bg-gradient-to-b from-[#0b1220] via-[#0e1530] to-[#0b1220]">
+  <div id="root"></div>
 
-self.addEventListener('activate', (event) => {
-  event.waitUntil(
-    caches.keys().then(keys => Promise.all(keys.map(k => k !== CACHE_NAME && caches.delete(k)))),
-  );
-  self.clients.claim();
-});
+  <script type="text/babel">
+    const { useEffect, useState } = React;
 
-self.addEventListener('fetch', (event) => {
-  const req = event.request;
-  const url = new URL(req.url);
-  if (url.origin === location.origin) {
-    event.respondWith(
-      caches.match(req).then(res => res || fetch(req).then(r => {
-        const copy = r.clone();
-        caches.open(CACHE_NAME).then(c => c.put(req, copy));
-        return r;
-      }))
-    );
-  } else {
-    event.respondWith(fetch(req).catch(() => caches.match('./')));
-  }
-});
+    // Firebase 配置
+    const firebaseConfig = {
+      apiKey: "AIzaSyBePfEThajXkfixYc-oUl9m8htKcXRuuI8",
+      authDomain: "prompt-29d34.firebaseapp.com",
+      projectId: "prompt-29d34",
+      storageBucket: "prompt-29d34.firebasestorage.app",
+      messagingSenderId: "2282413195",
+      appId: "1:2282413195:web:1ecae5e1a116be239b488e",
+      measurementId: "G-R7TW7M0L5M"
+    };
+
+    let app, auth, storage;
+    try {
+      app = firebase.initializeApp(firebaseConfig);
+      auth = firebase.auth();
+      storage = firebase.storage();
+    } catch (e) {
+      console.warn("Firebase 初始化失败：请填写正确的 firebaseConfig。", e);
+    }
+
+    // 数据同步：Firebase实现
+    useEffect(() => {
+      if (auth) {
+        auth.onAuthStateChanged(user => {
+          if (user) {
+            // 设置用户名和头像
+            const userName = user.displayName || "未命名用户";
+            const userPhotoURL = user.photoURL || "https://via.placeholder.com/150";
+            // 将用户名和头像存储在state中
+            setUserInfo({ name: userName, photoURL: userPhotoURL, email: user.email });
+          } else {
+            // 未登录状态
+            setUserInfo(null);
+          }
+        });
+      }
+    }, [auth]);
+
+    const [userInfo, setUserInfo] = useState(null);
+
+    // 头像和名字上传功能
+    const handleNameChange = () => {
+      const newName = prompt("请输入新的用户名");
+      if (newName && auth.currentUser) {
+        auth.currentUser.updateProfile({ displayName: newName })
+          .then(() => alert("用户名更新成功"))
+          .catch((err) => alert("用户名更新失败：" + err.message));
+      }
+    };
+
+    const handleAvatarChange = (e) => {
+      if (e.target.files[0] && auth.currentUser) {
+        const file = e.target.files[0];
+        const storageRef = storage.ref().child("avatars/" + auth.currentUser.uid);
+        storageRef.put(file)
+          .then(() => {
+            storageRef.getDownloadURL().then((url) => {
+              auth.currentUser.updateProfile({ photoURL: url });
+              alert("头像更新成功");
+            });
+          })
+          .catch((err) => alert("头像更新失败：" + err.message));
+      }
+    };
+
+    return (
+      <div className="relative">
+        <header className="sticky top-0 z-30 backdrop-blur-xl bg-white/5 border-b border-white/10">
+          <div className="max-w-7xl mx-auto px-4 py-3 flex items-center gap-4">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-400 to-fuchsia-500 shadow-lg" />
+              <div className="font-semibold tracking-wide">奥利给！</div>
+            </div>
+            <div className="ml-auto flex items-center gap-2">
+              {userInfo ? (
+                <>
+                  <img src={userInfo.photoURL} alt="头像" className="w-8 h-8 rounded-full" />
+                  <span className="text-xs text-white/70 hidden sm:inline">{userInfo.name}</span>
+                  <span className="text-xs text-white/70 hidden sm:inline">{userInfo.email}</span>
+                  <button onClick={handleNameChange} className="px-3 py-1.5 rounded-lg bg-white/10 border border-white/20 text-sm hover:bg-white/20">修改用户名</button>
+                  <input type="file" accept="image/*" onChange={handleAvatarChange} className="hidden" id="avatarInput" />
+                  <label htmlFor="avatarInput" className="px-3 py-1.5 rounded-lg bg-white/10 border border-white/20 text-sm hover:bg-white/20 cursor-pointer">修改头像</label>
+                  <button onClick={() => auth.signOut()} className="px-3 py-1.5 rounded-lg bg-white/10 border border-white/20">退出</button>
+                </>
+              ) : (
+                <button onClick={() => auth.signInWithPopup(new firebase.auth.GoogleAuthProvider())} className="px-3 py-1.5 rounded-lg bg-indigo-500/90 hover:bg-indigo-500 text-white">登录</button>
