@@ -29,7 +29,6 @@
   <style>
     :root { color-scheme: dark; }
     body{ font-family: Inter, ui-sans-serif, system-ui, -apple-system; }
-    /* 背景动效 */
     @keyframes blobFloat{0%{transform:translate3d(0,0,0) scale(1)}100%{transform:translate3d(3vw,-2vh,0) scale(1.06)}}
   </style>
 </head>
@@ -64,13 +63,10 @@
       if (auth) {
         auth.onAuthStateChanged(user => {
           if (user) {
-            // 设置用户名和头像
             const userName = user.displayName || "未命名用户";
             const userPhotoURL = user.photoURL || "https://via.placeholder.com/150";
-            // 将用户名和头像存储在state中
             setUserInfo({ name: userName, photoURL: userPhotoURL, email: user.email });
           } else {
-            // 未登录状态
             setUserInfo(null);
           }
         });
@@ -79,7 +75,6 @@
 
     const [userInfo, setUserInfo] = useState(null);
 
-    // 头像和名字上传功能
     const handleNameChange = () => {
       const newName = prompt("请输入新的用户名");
       if (newName && auth.currentUser) {
