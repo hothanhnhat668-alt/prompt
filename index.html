@@ -63,11 +63,12 @@
       if (auth) {
         auth.onAuthStateChanged(user => {
           if (user) {
+            // 获取并设置用户名和头像
             const userName = user.displayName || "未命名用户";
             const userPhotoURL = user.photoURL || "https://via.placeholder.com/150";
             setUserInfo({ name: userName, photoURL: userPhotoURL, email: user.email });
           } else {
-            setUserInfo(null);
+            setUserInfo(null);  // 未登录状态
           }
         });
       }
