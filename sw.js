@@ -1,4 +1,4 @@
-// Simple offline-first service worker
+
 const CACHE_NAME = 'aoligei-prompt-cache-v1';
 const ASSETS = ['./','./index.html','./manifest.json'];
 
@@ -9,7 +9,7 @@ self.addEventListener('install', (event) => {
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then(keys => Promise.all(keys.map(k => k !== CACHE_NAME && caches.delete(k))))
+    caches.keys().then(keys => Promise.all(keys.map(k => k !== CACHE_NAME && caches.delete(k)))),
   );
   self.clients.claim();
 });
