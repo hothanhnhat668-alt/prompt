@@ -9,915 +9,164 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
-      theme: { extend: {
-        fontFamily: { sans: ['Inter','ui-sans-serif','system-ui'] },
-        colors: { primary:'#4f46e5' }
-      } }
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Inter','ui-sans-serif','system-ui'] },
+          colors: { primary:'#4f46e5' }
+        }
+      }
     };
   </script>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
-  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
   <script src="https://unpkg.com/@babel/standalone@7/babel.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/fuse.js@6.6.2"></script>
-  <!-- 引入 Firebase 模块 - 使用 compat 版本以便与现有代码兼容 -->
   <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-storage-compat.js"></script>
-
   <style>
     :root { color-scheme: dark; }
-    body{ font-family: Inter, ui-sans-serif, system-ui, -apple-system; }
-    /* 背景动效 */
-    @keyframes blobFloat{0%{transform:translate3d(0,0,0) scale(1)}100%{transform:translate3d(3vw,-2vh,0) scale(1.06)}}
-
-    /* ===== 修复下拉菜单选项在深色模式下的可读性问题 ===== */
-    select option {
-      color: #111827; /* 设置为深色文字 */
-      background: #FFFFFF; /* 设置为浅色背景 */
-    }
-     /* 自定义滚动条 */
-    .custom-scroll::-webkit-scrollbar { width: 6px; }
-    .custom-scroll::-webkit-scrollbar-thumb { background-color: rgba(255,255,255,0.3); border-radius: 3px; }
-    .custom-scroll::-webkit-scrollbar-track { background: transparent; }
-
-    /* 确保 Prompt Card 高度一致 */
-     .prompt-card {
-        height: 200px; /* Or min-height if preferred */
-        display: flex;
-        flex-direction: column;
-        justify-content: space-between;
-     }
-     .prompt-card-content {
-         flex-grow: 1; /* Allow content to take up space */
-         overflow: hidden; /* Hide overflow */
-     }
-     .prompt-card-summary {
-         display: -webkit-box;
-         -webkit-line-clamp: 3; /* Limit to 3 lines */
-         -webkit-box-orient: vertical;
-         overflow: hidden;
-         text-overflow: ellipsis;
-         min-height: 3.9em; /* Approx height for 3 lines */
-         max-height: 3.9em;
-     }
-
+    body { font-family: Inter, ui-sans-serif, system-ui, -apple-system; }
   </style>
 </head>
-<body class="min-h-screen text-white bg-gradient-to-b from-[#0b1220] via-[#0e1530] to-[#0b1220]">
-  <div class="pointer-events-none fixed inset-0 -z-10">
-    <div class="absolute inset-0" style="background:
-      radial-gradient(1200px 800px at 10% 5%, rgba(31,41,55,1) 0%, rgba(31,41,55,0) 35%),
-      radial-gradient(900px 700px at 85% 15%, rgba(55,48,163,0.35) 0%, rgba(55,48,163,0) 45%),
-      radial-gradient(900px 700px at 20% 85%, rgba(16,185,129,0.25) 0%, rgba(16,185,129,0) 40%),
-      linear-gradient(180deg,#0b1220 0%, #0f172a 45%, #111827 100%)
-    "></div>
-    <div class="absolute inset-0 opacity-20" style="background-image:
-      linear-gradient(to right, rgba(255,255,255,.05) 1px, transparent 1px),
-      linear-gradient(to bottom, rgba(255,255,255,.05) 1px, transparent 1px);
-      background-size:28px 28px;"></div>
-    <div class="absolute w-[38vw] h-[38vw] max-w-[680px] max-h-[680px] rounded-full blur-[40px] opacity-70 mix-blend-multiply bg-gradient-to-br from-indigo-400 to-blue-400 animate-[blobFloat_16s_ease-in-out_infinite_alternate] -top-[10vh] -left-[10vw]"></div>
-    <div class="absolute w-[38vw] h-[38vw] max-w-[680px] max-h-[680px] rounded-full blur-[40px] opacity-70 mix-blend-multiply bg-gradient-to-br from-amber-400 to-rose-500 animate-[blobFloat_16s_ease_in_out_infinite_alternate] top-[20vh] -right-[12vw]" style="animation-delay:.6s"></div>
-    <div class="absolute w-[38vw] h-[38vw] max-w-[680px] max-h-[680px] rounded-full blur-[40px] opacity-70 mix-blend-multiply bg-gradient-to-br from-emerald-400 to-cyan-400 animate-[blobFloat_16s_ease_in_out_infinite_alternate] -bottom-[12vh] left-[20vw]" style="animation-delay:1.2s"></div>
-  </div>
 
+<body class="min-h-screen text-white bg-gradient-to-b from-[#0b1220] via-[#0e1530] to-[#0b1220]">
   <div id="root"></div>
 
   <script type="text/babel">
-    const { useEffect, useMemo, useState } = React;
+    const { useEffect, useState } = React;
 
-    // ---------------- 工具 ----------------
-    const uid = () => Math.random().toString(36).slice(2) + Date.now().toString(36);
-
-    function autoSummarize(text){
-      if(!text) return '';
-      const clean = text.replace(/\s+/g,' ').trim();
-      const first = clean.split(/[。.!?；;]\s*/)[0] || clean.slice(0,80);
-      const words = clean.toLowerCase().match(/[\p{L}\p{N}_\-]{2,}/gu) || [];
-      const stop = new Set(['the','and','for','with','that','this','you','your','我们','以及','的是','可以','如何','一个','提示','prompt','内容']);
-      const freq = {};
-      words.forEach(w=>{ if(!stop.has(w)) freq[w]=(freq[w]||0)+1; });
-      const top = Object.entries(freq).sort((a,b)=>b[1]-a[1]).slice(0,4).map(x=>x[0]);
-      let res = first;
-      if(top.length) res += ' ｜ 关键词：' + top.join('、');
-      return res.slice(0,84);
-    }
-
-    const SYNONYMS = {
-      "外贸": ["国际贸易","B2B","出口","海关","贸易"],
-      "客户开发": ["获客","线索","sales prospecting","开发信","跟进"],
-      "邮件": ["email","电邮","邮件模板","邮件主题"],
-      "天线": ["antenna","GPS","GNSS","4G","5G","LoRa","WiFi","卫星"],
-      "视频": ["短视频","抖音","剪辑","脚本","分镜","TikTok"],
-      "英文": ["英语","English","口语","翻译"],
-      "搜索": ["查找","检索","语义","模糊匹配","相关性"],
-      "标签": ["tag","分类","归档"]
-    };
-    function expandQuery(q){
-      const bag = new Set([q]);
-      Object.entries(SYNONYMS).forEach(([k,arr])=>{
-        if(q.includes(k)) arr.forEach(s=>bag.add(s));
-        if(arr.some(v=>q.includes(v))) bag.add(k);
-      });
-      return Array.from(bag);
-    }
-
-    // -------------- Firebase & Firestore 设置 --------------
-    // !!! 已从您的图片中获取并替换 !!!
+    // ========== Firebase 初始化 ==========
     const firebaseConfig = {
-      apiKey: "AIzaSyDirBHX8vyo3fnvvud2aq5-dsvjQT4iWps",
-      authDomain: "prompt-4a7f5.firebaseapp.com",
-      projectId: "prompt-4a7f5",
-      storageBucket: "prompt-4a7f5.firebasestorage.app",
-      messagingSenderId: "960214780733",
-      appId: "1:960214780733:web:285f65cb27de2e042f9354",
-      measurementId: "G-9G2DPCKG1V"
+      apiKey: "替换为你自己的 apiKey",
+      authDomain: "替换为你的 authDomain",
+      projectId: "替换为你的 projectId",
+      storageBucket: "替换为你的 storageBucket",
+      messagingSenderId: "替换为你的 senderId",
+      appId: "替换为你的 appId"
     };
 
-    let app, auth, db, storage;
-    let userId = null; // 全局 userId 变量
-
+    let app, auth, storage;
     try {
-      if (!firebase.apps.length) { // 防止重复初始化
-        app = firebase.initializeApp(firebaseConfig);
-      } else {
-        app = firebase.app();
-      }
+      app = firebase.initializeApp(firebaseConfig);
       auth = firebase.auth();
-      db = firebase.firestore();
       storage = firebase.storage();
-      firebase.firestore.setLogLevel('debug');
     } catch (e) {
-      console.error("Firebase/Firestore 初始化失败：请检查配置和网络。", e);
-      alert("Firebase 初始化失败！请检查网络连接或稍后重试。");
+      console.error("Firebase 初始化失败，请检查配置：", e);
     }
 
-    // -------------- 核心数据 Hook (使用 Firestore) --------------
-    function useCloudData(){
-      const [projects, setProjects] = useState([]);
-      const [prompts, setPrompts] = useState([]);
-      const [loading, setLoading] = useState(true);
-
-      // Firestore 路径生成 - 确保 userId 有效
-      const getPath = (collectionName) => {
-        if (!userId) {
-          console.error("User ID not available for Firestore path.");
-          return null;
-        }
-        return `artifacts/v1/users/${userId}/${collectionName}`;
-      };
-
-      // 实时监听器
-      useEffect(() => {
-        if (!db || !userId) { // 检查 userId
-          console.log("Firestore hook waiting for userId...");
-          setLoading(false); // 没有用户ID，停止加载
-          setProjects([]); // 清空数据
-          setPrompts([]); // 清空数据
-          return;
-        }
-        console.log("Firestore hook initializing with userId:", userId);
-        setLoading(true);
-
-        const projectPath = getPath('projects');
-        const promptPath = getPath('prompts');
-        if (!projectPath || !promptPath) return; // 路径无效则退出
-
-        let isMounted = true; // 防止组件卸载后更新状态
-
-        // 1. 监听项目
-        const unsubscribeProjects = db.collection(projectPath).onSnapshot(snapshot => {
-          if (!isMounted) return;
-          const newProjects = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-
-          // 确保有一个默认项目 (仅当首次加载且无数据时)
-          if (newProjects.length === 0 && snapshot.metadata.fromCache === false) {
-             db.collection(projectPath).doc('default').set({ name: '默认项目', createdAt: firebase.firestore.FieldValue.serverTimestamp() })
-                .catch(err => console.error("创建默认项目失败:", err));
-          } else if (newProjects.length > 0 && !newProjects.find(p => p.id === 'default')) {
-            // 如果存在项目但没有默认项目（可能被删除了），重新检查并创建
-             db.collection(projectPath).doc('default').get().then(doc => {
-                 if (!doc.exists && isMounted) {
-                    db.collection(projectPath).doc('default').set({ name: '默认项目', createdAt: firebase.firestore.FieldValue.serverTimestamp() })
-                        .catch(err => console.error("重新创建默认项目失败:", err));
-                 }
-             });
-          }
-
-          setProjects(newProjects.sort((a, b) => (a.createdAt?.toMillis() || 0) - (b.createdAt?.toMillis() || 0)));
-        }, err => {
-          if (isMounted) {
-            console.error("项目数据监听失败:", err);
-            setLoading(false);
-          }
-        });
-
-        // 2. 监听 Prompts
-        const unsubscribePrompts = db.collection(promptPath).orderBy('createdAt', 'desc').onSnapshot(snapshot => {
-          if (!isMounted) return;
-          const newPrompts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-          setPrompts(newPrompts);
-          setLoading(false);
-        }, err => {
-           if (isMounted) {
-            console.error("Prompt 数据监听失败:", err);
-            setLoading(false);
-           }
-        });
-
-        return () => {
-          isMounted = false;
-          console.log("Unsubscribing Firestore listeners for userId:", userId);
-          unsubscribeProjects();
-          unsubscribePrompts();
-        };
-      }, [userId]); // 依赖 userId
-
-      // --- CRUD 操作 --- (确保所有操作都检查 userId)
-
-      const createProject = async (name) => {
-        if (!name?.trim() || !userId) return;
-        const path = getPath('projects');
-        if (!path) return;
-        try {
-            await db.collection(path).add({ name: name.trim(), createdAt: firebase.firestore.FieldValue.serverTimestamp() });
-        } catch (error) {
-            console.error("创建项目失败:", error);
-            alert("创建项目失败，请稍后重试。");
-        }
-      };
-
-      const createPrompt = async ({ title, content, projectId }) => {
-        if (!title.trim() || !content.trim() || !userId) return;
-        const path = getPath('prompts');
-        if (!path) return;
-        const summary = autoSummarize(content);
-        try {
-            await db.collection(path).add({
-              title: title.trim(),
-              content: content.trim(),
-              projectId: projectId || null,
-              favorite: false,
-              summary: summary,
-              createdAt: firebase.firestore.FieldValue.serverTimestamp()
-            });
-        } catch (error) {
-            console.error("创建 Prompt 失败:", error);
-            alert("创建 Prompt 失败，请稍后重试。");
-        }
-      };
-
-      const updatePrompt = async (id, patch) => {
-        if (!id || !userId) return;
-        const path = getPath('prompts');
-        if (!path) return;
-        const dataToUpdate = { ...patch };
-        if (patch.content) {
-          dataToUpdate.summary = autoSummarize(patch.content);
-        }
-        try {
-            await db.collection(path).doc(id).update(dataToUpdate);
-        } catch (error) {
-            console.error("更新 Prompt 失败:", error);
-            alert("更新 Prompt 失败，请稍后重试。");
-        }
-      };
-
-      const deletePrompt = async (id) => {
-        if (!id || !userId) return;
-        if (!confirm('确定要删除这个 Prompt 吗？')) return;
-        const path = getPath('prompts');
-        if (!path) return;
-        try {
-            await db.collection(path).doc(id).delete();
-        } catch (error) {
-            console.error("删除 Prompt 失败:", error);
-            alert("删除 Prompt 失败，请稍后重试。");
-        }
-      };
-
-      const updateProject = async (id, patch) => {
-          if (!id || !userId || id === 'default') return;
-          const path = getPath('projects');
-          if (!path) return;
-          try {
-            await db.collection(path).doc(id).update(patch);
-          } catch (error) {
-             console.error("更新项目失败:", error);
-             alert("更新项目失败，请稍后重试。");
-          }
-      };
-
-      const deleteProject = async (id) => {
-        if (!id || !userId || id === 'default') return;
-        if (!confirm('确定要删除这个项目吗？\n\n（项目内的 Prompt 将被自动移到“未归档”。）')) return;
-
-        const promptPath = getPath('prompts');
-        const projectPath = getPath('projects');
-        if (!promptPath || !projectPath) return;
-
-        const batch = db.batch();
-        try {
-            // 使用 get() 查询需要移动的 prompts
-            const promptsToMoveSnapshot = await db.collection(promptPath).where('projectId', '==', id).get();
-            
-            promptsToMoveSnapshot.forEach(doc => {
-                const docRef = db.collection(promptPath).doc(doc.id);
-                batch.update(docRef, { projectId: null });
-            });
-            
-            // 删除项目
-            const projectRef = db.collection(projectPath).doc(id);
-            batch.delete(projectRef);
-
-            await batch.commit();
-        } catch (error) {
-            console.error("删除项目失败:", error);
-            alert("删除项目失败，请稍后重试。");
-        }
-      };
-
-      return { projects, prompts, loading, createProject, createPrompt, updatePrompt, deletePrompt, updateProject, deleteProject };
-    }
-
-    // -------------- 渲染组件 --------------
-    const GlassCard = ({ children, className='' }) => (
-      <div className={'rounded-2xl border border-white/20 bg-white/10 backdrop-blur-xl shadow-xl ' + className}>{children}</div>
-    );
-
-    const Badge = ({ children }) => (
-      <span className="inline-block px-2 py-0.5 rounded-full text-xs bg-white/20 text-white/90 border border-white/30 whitespace-nowrap">{children}</span>
-    );
-
-    const IconButton = ({ title, onClick, children, disabled=false }) => (
-      <button title={title} onClick={onClick} disabled={disabled}
-        className="inline-flex items-center justify-center rounded-lg border border-white/10 bg-white/20 hover:bg-white/30 text-white/90 px-2.5 py-2 shadow-sm transition-transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed">
-        {children}
-      </button>
-    );
-
-    const PrimaryButton = ({ children, onClick, disabled }) => (
-      <button onClick={onClick} disabled={disabled} className="px-4 py-2 rounded-xl bg-indigo-500/90 hover:bg-indigo-500 text-white font-semibold shadow-lg shadow-indigo-500/20 disabled:bg-gray-600/50 disabled:cursor-not-allowed">
-        {children}
-      </button>
-    );
-
-    // -------------- 主应用 --------------
-    function App(){
-      // Auth 状态
+    // ========== React 主应用 ==========
+    function App() {
       const [user, setUser] = useState(null);
-      const [authReady, setAuthReady] = useState(false);
-      const [showAuth, setShowAuth] = useState(false);
-      const [authMode, setAuthMode] = useState('login'); // login | register | forgotPassword
 
-      // 数据状态 - 从云端获取
-      const { projects, prompts, loading, createProject, createPrompt, updatePrompt, deletePrompt, updateProject, deleteProject } = useCloudData();
-
-      // UI 状态
-      const [selectedProjectId, setSelectedProjectId] = useState('all');
-      const [search, setSearch] = useState('');
-      const [sort, setSort] = useState('newest');
-      const [showCreate, setShowCreate] = useState(false);
-      const [editing, setEditing] = useState(null);
-      const [detail, setDetail] = useState(null);
-      const [suggestions, setSuggestions] = useState([]);
-
-      // 认证监听器
-      useEffect(()=>{
-        if(!auth || !db) {
-          console.warn("Firebase Auth or DB not initialized.");
-          setAuthReady(true);
-          return;
+      useEffect(() => {
+        if (auth) {
+          return auth.onAuthStateChanged((u) => {
+            setUser(u || null);
+          });
         }
+      }, []);
 
-        auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
-
-        const unsub = auth.onAuthStateChanged(u=>{
-          console.log("Auth state changed:", u ? u.uid : 'No user');
-          setUser(u); // 更新 user state
-          userId = u ? u.uid : null; // 更新全局 userId
-          if (!u) {
-             // 如果用户未登录（包括 signOut 后），尝试匿名登录
-             console.log("Attempting anonymous sign-in...");
-             auth.signInAnonymously().catch(error => {
-                console.error("Anonymous sign-in failed after logout:", error);
-             });
-          }
-          setAuthReady(true); // 标志认证已准备就绪
-        }, error => {
-          console.error("Auth state listener error:", error);
-          setAuthReady(true); // 即使出错也要标记为就绪
-        });
-        return ()=>unsub && unsub();
-      }, []); // 空依赖数组，只运行一次
-
-      // Fuse 索引
-      const fuse = React.useMemo(()=>{
-        return new Fuse(prompts, {
-          includeScore:true, shouldSort:true, threshold:0.32,
-          keys:[
-            { name:'title', weight:0.5 },
-            { name:'content', weight:0.45 },
-            { name:'summary', weight:0.25 },
-            { name:'projectName', getFn:(p)=> projects.find(x=>x.id===p.projectId)?.name || '', weight:0.1 }
-          ]
-        });
-      }, [prompts, projects]);
-
-      // 联想词
-      useEffect(()=>{
-        const q = search.trim(); if(!q) return setSuggestions([]);
-        setSuggestions(expandQuery(q).slice(1,7));
-      }, [search]);
-
-      // 过滤排序
-      const filtered = useMemo(()=>{
-        let data = prompts.slice(); // 从 state 获取
-        if(selectedProjectId==='favorites') data = data.filter(p=>p.favorite);
-        else if(selectedProjectId==='unassigned') data = data.filter(p=>!p.projectId || p.projectId === null);
-        else if(selectedProjectId!=='all') data = data.filter(p=>p.projectId===selectedProjectId);
-
-        const term = search.trim().toLowerCase();
-        if(term){
-          const expanded = expandQuery(term).join(' ');
-          const ids = new Set(fuse.search(expanded).map(r=>r.item.id));
-          data = data.filter(p=>ids.has(p.id));
-        }
-
-        switch (sort) {
-          case 'newest': data.sort((a,b)=>(b.createdAt?.toMillis()||0)-(a.createdAt?.toMillis()||0)); break;
-          case 'oldest': data.sort((a,b)=>(a.createdAt?.toMillis()||0)-(b.createdAt?.toMillis()||0)); break;
-          case 'title-az': data.sort((a,b)=>(a.title||'').localeCompare(b.title||'')); break;
-          case 'title-za': data.sort((a,b)=>(b.title||'').localeCompare(a.title||'')); break;
-        }
-        return data;
-      }, [prompts, selectedProjectId, search, sort, fuse, projects]); // 添加 projects 依赖
-
-      // 统计
-      const countAll = prompts.length;
-      const countFav = prompts.filter(p=>p.favorite).length;
-      const countUnassigned = prompts.filter(p=>!p.projectId || p.projectId === null).length;
-
-      // 项目重命名与删除
-      function handleRenameProject(id, oldName) {
-        if (!user || user.isAnonymous) return alert("请先使用邮箱登录以编辑项目。");
-        const newName = prompt('请输入新的项目名称：', oldName);
-        if (newName && newName.trim() && newName.trim() !== oldName) {
-          updateProject(id, { name: newName.trim() });
-        }
-      }
-      function handleDeleteProject(id) {
-         if (!user || user.isAnonymous) return alert("请先使用邮箱登录以删除项目。");
-         deleteProject(id);
-         if (selectedProjectId === id) setSelectedProjectId('all');
-      }
-
-      // 导入/导出
-      const handleExport = () => { /* ... (保持不变，但添加 user 检查) ... */
-          if (!user || user.isAnonymous) return alert("请先使用邮箱登录以导出数据。");
-          const exportData = { /* ... */ };
-          try { /* ... */ } catch (err) { /* ... */ }
-      };
-      const handleImportClick = () => { /* ... (保持不变，但添加 user 检查) ... */
-          if (!user || user.isAnonymous) return alert("请先使用邮箱登录以导入数据。");
-          document.getElementById('import-file-input').click();
-      };
-      const handleFileChange = (e) => { /* ... (保持不变) ... */ };
-
-      // 认证操作
-      const handleSignOut = () => {
-        if(confirm('确定要退出登录吗？退出后将切换为匿名用户。')){
-          auth.signOut(); // onAuthStateChanged 会处理匿名登录
+      // 邮箱注册
+      const handleRegister = async () => {
+        const email = prompt("请输入邮箱：");
+        const password = prompt("请输入密码（至少6位）：");
+        try {
+          await auth.createUserWithEmailAndPassword(email, password);
+          alert("注册成功！");
+        } catch (err) {
+          alert("注册失败：" + err.message);
         }
       };
-      const handleNameChange = () => { /* ... (保持不变，但添加 user.isAnonymous 检查) ... */
-          if (!user || user.isAnonymous) return alert("请先使用邮箱登录以修改用户名。");
-          const newName = prompt(/* ... */);
-          /* ... */
-      };
-      const handleAvatarChange = (e) => { /* ... (保持不变，但添加 user.isAnonymous 检查) ... */
-          if (!user || user.isAnonymous) { e.target.value = null; return alert("请先使用邮箱登录以修改头像。"); }
-          /* ... */
-      };
 
-      const getCurrentAuthButton = () => {
-        if (!authReady) return <button disabled className="px-3 py-1.5 rounded-lg bg-white/10 text-white/60 text-sm">加载中...</button>;
-        
-        if (user && !user.isAnonymous) { // 已登录非匿名用户
-          const email = user.email || '已登录';
-          const photoURL = user.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.displayName || email)}&background=random`;
-          return (
-            <div className="flex gap-2 items-center">
-              <img src={photoURL} alt="头像" className="w-8 h-8 rounded-full" />
-              <span className="text-xs text-white/70 hidden sm:inline truncate max-w-[150px]" title={email}>
-                {user.displayName || email.split('@')[0]}
-              </span>
-              <button onClick={handleNameChange} title="修改用户名" className="px-3 py-1.5 rounded-lg bg-white/10 border border-white/20 text-sm hover:bg-white/20">✏️</button>
-              <input type="file" accept="image/*" onChange={handleAvatarChange} className="hidden" id="avatarInput" />
-              <label htmlFor="avatarInput" title="修改头像" className="px-3 py-1.5 rounded-lg bg-white/10 border border-white/20 text-sm hover:bg-white/20 cursor-pointer">🖼️</label>
-              <button onClick={handleSignOut} title="退出登录" className="px-3 py-1.5 rounded-lg bg-rose-500/90 hover:bg-rose-600 border border-white/20 text-sm">退出</button>
-            </div>
-          );
+      // 邮箱登录
+      const handleEmailLogin = async () => {
+        const email = prompt("请输入邮箱：");
+        const password = prompt("请输入密码：");
+        try {
+          await auth.signInWithEmailAndPassword(email, password);
+          alert("登录成功！");
+        } catch (err) {
+          alert("登录失败：" + err.message);
         }
-        // 未登录或匿名用户
-        return <button onClick={()=>{ setShowAuth(true); setAuthMode('login'); }} className="px-3 py-1.5 rounded-lg bg-indigo-500/90 hover:bg-indigo-500 text-sm">登录 / 注册</button>;
       };
 
+      // 微信扫码登录
+      const handleWechatLogin = () => {
+        const appid = "替换为你的微信开放平台AppID";
+        const redirect_uri = encodeURIComponent(window.location.origin + "/wechat_callback.html");
+        const state = Math.random().toString(36).slice(2);
+        const url = `https://open.weixin.qq.com/connect/qrconnect?appid=${appid}&redirect_uri=${redirect_uri}&response_type=code&scope=snsapi_login&state=${state}#wechat_redirect`;
+        window.location.href = url;
+      };
+
+      // 修改昵称
+      const changeName = () => {
+        const newName = prompt("输入新的昵称：");
+        if (newName && auth.currentUser) {
+          auth.currentUser.updateProfile({ displayName: newName });
+          alert("昵称更新成功！");
+        }
+      };
+
+      // 上传头像
+      const uploadAvatar = (e) => {
+        if (e.target.files && e.target.files[0] && auth.currentUser) {
+          const file = e.target.files[0];
+          const ref = storage.ref().child("avatars/" + auth.currentUser.uid);
+          ref.put(file).then(() => {
+            ref.getDownloadURL().then((url) => {
+              auth.currentUser.updateProfile({ photoURL: url });
+              alert("头像更新成功！");
+            });
+          });
+        }
+      };
+
+      // 登出
+      const logout = () => {
+        auth.signOut();
+      };
 
       return (
-        <div className="relative">
-          {/* 顶栏 */}
-          <header className="sticky top-0 z-30 backdrop-blur-xl bg-white/5 border-b border-white/10">
-            <div className="max-w-7xl mx-auto px-4 py-3 flex items-center gap-4">
+        <div>
+          <header className="flex justify-between items-center px-6 py-3 bg-white/10 backdrop-blur-md">
+            <h1 className="text-xl font-semibold">奥利给！Prompt云同步库</h1>
+            {user ? (
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-400 to-fuchsia-500 shadow-lg" />
-                <div className="font-semibold tracking-wide">奥利给！Prompt云同步库</div>
-                <div className="hidden sm:flex items-center gap-2 text-white/70">
-                  <Badge>React</Badge>
-                  <Badge>Firestore</Badge>
-                  <Badge>实时同步</Badge>
-                </div>
+                <img src={user.photoURL || "https://via.placeholder.com/50"} className="w-8 h-8 rounded-full" />
+                <span>{user.displayName || "未命名用户"}</span>
+                <span className="text-sm text-white/70">{user.email}</span>
+                <button onClick={changeName} className="px-3 py-1 rounded bg-indigo-500/70 hover:bg-indigo-500">改昵称</button>
+                <label className="px-3 py-1 rounded bg-indigo-500/70 hover:bg-indigo-500 cursor-pointer">
+                  上传头像
+                  <input type="file" accept="image/*" onChange={uploadAvatar} className="hidden" />
+                </label>
+                <button onClick={logout} className="px-3 py-1 rounded bg-rose-600/70 hover:bg-rose-600">退出</button>
               </div>
-              <div className="ml-auto flex items-center gap-2">
-                <button onClick={handleImportClick} className="px-3 py-1.5 rounded-lg bg-white/10 border border-white/20 text-sm hover:bg-white/20" disabled={!user || user?.isAnonymous}>导入</button>
-                <button onClick={handleExport} className="px-3 py-1.5 rounded-lg bg-white/10 border border-white/20 text-sm hover:bg-white/20" disabled={!user || user?.isAnonymous}>导出</button>
-
-                {getCurrentAuthButton()}
-                <PrimaryButton onClick={()=>{ if (!user) { setShowAuth(true); setAuthMode('login'); return; } setShowCreate(true); }} disabled={!authReady}>新建 Prompt</PrimaryButton> {/* 确保 authReady */}
+            ) : (
+              <div className="flex gap-2">
+                <button onClick={handleRegister} className="px-3 py-1 rounded bg-indigo-600 hover:bg-indigo-700">注册</button>
+                <button onClick={handleEmailLogin} className="px-3 py-1 rounded bg-indigo-500 hover:bg-indigo-600">邮箱登录</button>
+                <button onClick={handleWechatLogin} className="px-3 py-1 rounded bg-green-500 hover:bg-green-600">微信扫码登录</button>
               </div>
-            </div>
+            )}
           </header>
 
-          {/* 主体 */}
-          <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-[270px,1fr] gap-4 px-4 py-6">
-            {/* 侧边栏 */}
-            <GlassCard className="p-4 lg:h-[calc(100vh-120px)] lg:sticky lg:top-[84px] overflow-y-auto custom-scroll">
-              <h2 className="text-lg font-semibold mb-3">项目 / 视图</h2>
-
-              <nav className="space-y-2">
-                <SidebarItem active={selectedProjectId==='all'} label="全部" count={countAll} onClick={()=>setSelectedProjectId('all')} />
-                <SidebarItem active={selectedProjectId==='favorites'} label="❤️ 我的收藏" count={countFav} onClick={()=>setSelectedProjectId('favorites')} />
-                <SidebarItem active={selectedProjectId==='unassigned'} label="未归档" count={countUnassigned} onClick={()=>setSelectedProjectId('unassigned')} />
-                <div className="h-px bg-white/10 my-2" />
-                <div className="flex items-center justify-between mb-1 text-sm text-white/70">
-                  <span>项目</span>
-                  <button onClick={()=>{ if(!user || user.isAnonymous) return alert('请先使用邮箱登录再创建项目。'); const n=prompt('新项目名称'); if(n) createProject(n); }} className="text-indigo-300 hover:text-indigo-200">+ 新建</button>
-                </div>
-
-                {/* 动态项目列表 */}
-                <div className="space-y-1">
-                  {projects.filter(p=>p.id!=='default').map(p=> (
-                    <div
-                      key={p.id}
-                      className={
-                        'group w-full flex items-center justify-between px-3 py-2 rounded-xl transition border ' +
-                        (selectedProjectId === p.id
-                          ? 'bg-indigo-400/20 border-indigo-300/30'
-                          : 'bg-white/5 border-white/10 hover:bg-white/10')
-                      }
-                    >
-                      <button
-                        onClick={()=>setSelectedProjectId(p.id)}
-                        className={'flex-1 truncate text-left ' + (selectedProjectId === p.id ? 'text-white' : 'text-white/85')}
-                        title={p.name||'未命名项目'}
-                      >
-                        {p.name||'未命名项目'}
-                      </button>
-                      <span className="text-xs text-white/70 ml-2 flex-shrink-0">{prompts.filter(x=>x.projectId===p.id).length}</span>
-
-                      {/* 编辑/删除按钮 (悬停显示) */}
-                      <div className="flex-shrink-0 flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity ml-1">
-                         <IconButton title="重命名" onClick={() => handleRenameProject(p.id, p.name)} disabled={!user || user?.isAnonymous}>✏️</IconButton>
-                         <IconButton title="删除" onClick={() => handleDeleteProject(p.id)} disabled={!user || user?.isAnonymous}>🗑️</IconButton>
-                      </div>
-                    </div>
-                  ))}
-                  {/* Default Project */}
-                  {projects.find(p => p.id === 'default') && (
-                    <SidebarItem active={selectedProjectId==='default'} label={projects.find(p => p.id === 'default')?.name || '默认项目'} count={prompts.filter(x=>x.projectId==='default').length} onClick={()=>setSelectedProjectId('default')} />
-                  )}
-                </div>
-              </nav>
-            </GlassCard>
-
-            {/* 内容区 */}
-            {!authReady && <div className="col-span-1 lg:col-span-1 text-center py-20 text-white/50">正在连接云端...</div>}
-            {authReady && loading && <div className="col-span-1 lg:col-span-1 text-center py-20 text-white/50">加载云端数据中...</div>}
-
-            {authReady && !loading && (
-              <div className="space-y-4">
-                <GlassCard className="p-4">
-                  <div className="flex flex-col md:flex-row gap-3 md:items-center">
-                    <div className="flex-1">
-                      <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="输入关键词或自然语言（支持模糊/语义联想）..." className="w-full rounded-xl bg-white/10 border border-white/20 px-4 py-2.5 placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-indigo-400/50" />
-                      {suggestions.length>0 && (
-                        <div className="mt-2 flex flex-wrap gap-2">
-                          {suggestions.map(s=> (
-                            <button key={s} onClick={()=>setSearch(v=>(v+' '+s).trim())} className="text-xs px-2 py-1 rounded-full bg-indigo-400/15 text-indigo-200 border border-indigo-300/20 hover:bg-indigo-400/25">{s}</button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                    <select value={sort} onChange={e=>setSort(e.target.value)} className="md:w-52 rounded-xl bg-white/10 border border-white/20 px-3 py-2 focus:outline-none">
-                      <option value="newest">按最新创建</option>
-                      <option value="oldest">按最旧创建</option>
-                      <option value="title-az">按标题 (A-Z)</option>
-                      <option value="title-za">按标题 (Z-A)</option>
-                    </select>
-                  </div>
-                </GlassCard>
-
-                {filtered.length===0
-                  ? <EmptyState onCreate={()=>{ if (!user) { setShowAuth(true); setAuthMode('login'); return; } setShowCreate(true); }} />
-                  : <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {filtered.map(p=> (
-                        <PromptCard
-                          key={p.id}
-                          prompt={p}
-                          projectName={projects.find(x=>x.id===p.projectId)?.name}
-                          onOpen={()=>setDetail(p)}
-                          onToggleFav={()=>updatePrompt(p.id, { favorite: !p.favorite })}
-                          onCopy={()=>navigator.clipboard.writeText(p.content||'')}
-                          onDelete={()=>deletePrompt(p.id)}
-                          userLoggedIn={!!user && !user.isAnonymous} // 仅对非匿名用户显示
-                        />
-                      ))}
-                    </div>
-                }
-              </div>
-            )}
-          </div>
-
-          {/* 登录弹窗 */}
-          {showAuth && (
-            <Modal title={authMode==='login' ? '用户登录' : '用户注册'} onClose={()=>{ setShowAuth(false); setAuthMode('login'); }}> {/* Reset mode on close */}
-              <AuthForm mode={authMode} onToggle={()=>setAuthMode(m=> m==='login' ? 'register' : 'login')} />
-            </Modal>
-          )}
-
-          {/* 创建/详情/编辑弹窗 */}
-          {showCreate && (
-            <Modal title="新建 Prompt" onClose={()=>setShowCreate(false)}>
-              <PromptEditor projects={projects} onSubmit={(data)=>{ if(data){ createPrompt(data); } setShowCreate(false); }} />
-            </Modal>
-          )}
-          {detail && (
-            <Modal title={detail.title||'(未命名)'} onClose={()=>setDetail(null)}>
-              <PromptDetailView
-                detail={detail}
-                projectName={projects.find(x=>x.id===detail.projectId)?.name}
-                onClose={()=>setDetail(null)}
-                onEdit={()=>{ setDetail(null); setEditing(detail); }} // 关闭详情，打开编辑
-                onDelete={()=> { deletePrompt(detail.id); setDetail(null); }}
-                onToggleFav={()=>updatePrompt(detail.id, { favorite: !detail.favorite })}
-                userLoggedIn={!!user && !user.isAnonymous} // 仅对非匿名用户显示
-              />
-            </Modal>
-          )}
-          {editing && (
-            <Modal title="编辑 Prompt" onClose={()=>setEditing(null)}>
-              <PromptEditor
-                projects={projects}
-                initial={{ title: editing.title, content: editing.content, projectId: editing.projectId || '' }}
-                onSubmit={(data)=>{ if(data){ updatePrompt(editing.id, data); } setEditing(null); }}
-              />
-            </Modal>
-          )}
-
-          {/* 文件导入 input */}
-          <input
-            type="file"
-            id="import-file-input"
-            className="hidden"
-            accept=".json"
-            onChange={handleFileChange}
-          />
-        </div>
-      );
-    }
-
-    const SidebarItem = ({ active, onClick, label, count }) => (
-      <button onClick={onClick}
-        className={'w-full flex items-center justify-between px-3 py-2 rounded-xl transition border ' + (active ? 'bg-indigo-400/20 border-indigo-300/30 text-white' : 'bg-white/5 border-white/10 text-white/85 hover:bg-white/10')}>
-        <span className="truncate text-left">{label}</span>
-        <span className="text-xs text-white/70">{count >= 0 ? count : '-'}</span> {/* 显示 count */}
-      </button>
-    );
-
-    const PromptCard = ({ prompt, projectName, onOpen, onToggleFav, onCopy, onDelete, userLoggedIn }) => (
-      <div className="prompt-card group relative rounded-2xl border border-white/15 bg-white/10 backdrop-blur-xl p-4 shadow-lg hover:shadow-indigo-600/20 transition-transform hover:-translate-y-0.5">
-        <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition">
-          <IconButton title="复制" onClick={(e)=>{ e.stopPropagation(); onCopy(); }}>📋</IconButton>
-          {userLoggedIn && <IconButton title="收藏" onClick={(e)=>{ e.stopPropagation(); onToggleFav(); }}>{prompt.favorite ? '💛' : '⭐'}</IconButton>}
-        </div>
-        <div className="prompt-card-content"> {/* 新增容器 */}
-            <div className="text-base font-semibold truncate mb-2 pr-12">{prompt.title||'(未命名)'}</div>
-            <div className="prompt-card-summary text-sm text-white/80">{prompt.summary || autoSummarize(prompt.content||'')}</div> {/* 应用截断样式 */}
-        </div>
-        <div className="mt-3 flex flex-col">
-            <div className="flex items-center justify-between text-xs text-white/60 mb-2">
-              <span>{prompt.createdAt?.toDate ? prompt.createdAt.toDate().toLocaleDateString() : '无日期'}</span>
-              <span className="truncate max-w-[50%]">{projectName? <Badge>{projectName}</Badge> : <Badge>未归档</Badge>}</span>
-            </div>
-            <div className='flex gap-2'>
-              <button onClick={onOpen} className="flex-1 rounded-lg bg-white/10 hover:bg-white/20 border border-white/15 px-3 py-2 text-sm">查看详情</button>
-              {userLoggedIn && <IconButton title="删除" onClick={(e)=>{ e.stopPropagation(); onDelete(); }}>🗑️</IconButton>}
-            </div>
-        </div>
-      </div>
-    );
-
-    function PromptDetailView({ detail, projectName, onClose, onEdit, onDelete, onToggleFav, userLoggedIn }) {
-      return (
-        <div className="space-y-4">
-          <div className="max-h-[60vh] overflow-y-auto space-y-4 pr-2 custom-scroll">
-            <div className="text-xl font-bold text-white mb-2">{detail.title}</div>
-            <div className="flex flex-wrap gap-2 mb-3">
-              <Badge>{projectName ? projectName : '未归档'}</Badge>
-              <Badge>{detail.createdAt?.toDate ? detail.createdAt.toDate().toLocaleString() : '无日期'}</Badge>
-            </div>
-            <pre className="whitespace-pre-wrap text-sm leading-relaxed text-white/90 bg-white/10 border border-white/15 rounded-lg p-3 ">{detail.content}</pre>
-          </div>
-          <div className="flex justify-between items-center pt-4 border-t border-white/10">
-            <div className='flex gap-2'>
-              <PrimaryButton onClick={()=>navigator.clipboard.writeText(detail.content||'')}>📋 复制 Prompt</PrimaryButton>
-              {userLoggedIn && <IconButton title="收藏" onClick={onToggleFav}>{detail.favorite ? '💛' : '⭐'}</IconButton>}
-            </div>
-            <div className='flex gap-2'>
-              {userLoggedIn && <IconButton title="编辑" onClick={onEdit}>✏️</IconButton>}
-              {userLoggedIn && <IconButton title="删除" onClick={onDelete}>🗑️</IconButton>}
-              <button onClick={onClose} className="px-4 py-2 rounded-xl bg-white/10 border border-white/20 text-sm hover:bg-white/20">关闭</button>
-            </div>
-          </div>
-        </div>
-      );
-    }
-
-    const EmptyState = ({ onCreate }) => (
-      <GlassCard className="p-10 text-center">
-        <div className="text-4xl mb-2">🧪</div>
-        <div className="text-lg mb-2">还没有任何 Prompt</div>
-        <div className="text-white/70 mb-4">从“新建 Prompt”开始，或在上方搜索框尝试输入“外贸 客户开发 天线”。</div>
-        <PrimaryButton onClick={onCreate}>新建 Prompt</PrimaryButton>
-      </GlassCard>
-    );
-
-    function PromptEditor({ projects, initial, onSubmit }){
-      const [title, setTitle] = useState(initial?.title||'');
-      const [content, setContent] = useState(initial?.content||'');
-      const [projectId, setProjectId] = useState(initial?.projectId||''); // 默认未归档
-      const [summary, setSummary] = useState(()=> autoSummarize(initial?.content||''));
-      useEffect(()=>{ setSummary(autoSummarize(content)); }, [content]);
-
-      function submit(e){
-          e.preventDefault();
-          if(!title.trim() || !content.trim()) return;
-          onSubmit({
-              title:title.trim(),
-              content:content.trim(),
-              projectId:projectId||null,
-              summary:summary.trim()||autoSummarize(content)
-          });
-      }
-      return (
-        <form onSubmit={submit} className="space-y-3">
-          <div>
-            <label className="block text-sm mb-1">标题</label>
-            <input value={title} onChange={e=>setTitle(e.target.value)} className="w-full rounded-xl bg-white/10 border border-white/20 px-3 py-2 focus:outline-none" placeholder="输入简短标题" required />
-          </div>
-          <div>
-            <label className="block text-sm mb-1">归属项目</label>
-            <select value={projectId || ''} onChange={e=>setProjectId(e.target.value)} className="w-full rounded-xl bg-white/10 border border-white/20 px-3 py-2 focus:outline-none">
-              <option value="">未归档</option>
-              {/* 确保 projects 数组存在 */}
-              {projects?.map(p=> <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm mb-1">Prompt 内容</label>
-            <textarea value={content} onChange={e=>setContent(e.target.value)} rows="6" className="w-full rounded-xl bg-white/10 border border-white/20 px-3 py-2 focus:outline-none custom-scroll" placeholder="输入完整的 Prompt 文本..." required></textarea>
-          </div>
-          <div>
-            <label className="block text-sm mb-1">自动摘要（可手动修改）</label>
-            <input value={summary} onChange={e=>setSummary(e.target.value)} className="w-full rounded-xl bg-white/10 border border-white/20 px-3 py-2 focus:outline-none" placeholder="系统将基于内容自动生成" />
-          </div>
-          <div className="pt-2 flex items-center justify-end gap-2">
-            <button type="button" onClick={()=>onSubmit(null)} className="px-4 py-2 rounded-xl bg-white/10 border border-white/20">取消</button>
-            <PrimaryButton type="submit">保存</PrimaryButton>
-          </div>
-        </form>
-      );
-    }
-
-    const Modal = ({ title, children, onClose }) => (
-      <div className="fixed inset-0 z-40 grid place-items-center bg-black/40 p-4 backdrop-blur-sm" onClick={onClose}>
-        <div className="w-full max-w-2xl rounded-2xl border border-white/20 bg-[#0e1530]/95 backdrop-blur-xl p-5 shadow-2xl" onClick={(e)=>e.stopPropagation()}>
-          <div className="flex items-center justify-between mb-3">
-            <div className="text-lg font-semibold">{title}</div>
-            <button onClick={onClose} className="text-white/70 hover:text-white">✕</button>
-          </div>
-          {children}
-        </div>
-      </div>
-    );
-
-    // 登录/注册/忘记密码表单
-    function AuthForm({ mode: initialMode, onToggle, onClose }){ // 接收 onClose
-      const [mode, setMode] = useState(initialMode);
-      const [email, setEmail] = useState('');
-      const [password, setPassword] = useState('');
-      const [error, setError] = useState('');
-      const [message, setMessage] = useState(''); // 用于显示重置密码成功信息
-
-      const handleResetPassword = async () => {
-         if(!email) { setError('请输入邮箱地址后点击忘记密码。'); return; }
-         setMessage(''); // 清除旧消息
-         setError(''); // 清除旧错误
-         try {
-            await auth.sendPasswordResetEmail(email);
-            setMessage('密码重置邮件已发送到您的邮箱，请查收。');
-         } catch (err) {
-            setError(err.message || '发送失败');
-         }
-      };
-
-      async function submit(e){
-        e.preventDefault(); setError(''); setMessage('');
-        if(!auth){ setError('未启用 Firebase。请在 index.html 中填入 firebaseConfig。'); return; }
-        try{
-          if(mode==='login'){ await auth.signInWithEmailAndPassword(email, password); }
-          else { await auth.createUserWithEmailAndPassword(email, password); }
-          onClose(); // 登录/注册成功后关闭模态框
-        } catch(err){
-           // 优化错误提示
-           let friendlyError = err.message || '操作失败';
-           if (err.code === 'auth/invalid-email') friendlyError = '邮箱格式不正确。';
-           if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password') friendlyError = '邮箱或密码错误。';
-           if (err.code === 'auth/email-already-in-use') friendlyError = '该邮箱已被注册，请尝试登录。';
-           if (err.code === 'auth/weak-password') friendlyError = '密码强度不足，请至少使用6位字符。';
-           setError(friendlyError);
-        }
-      }
-
-      return (
-        <form onSubmit={submit} className="space-y-3">
-          {mode !== 'forgotPassword' && (
-            <>
+          <main className="p-6">
+            {user ? (
               <div>
-                <label className="block text-sm mb-1">邮箱</label>
-                <input value={email} onChange={e=>setEmail(e.target.value)} type="email" required className="w-full rounded-xl bg-white/10 border border-white/20 px-3 py-2 focus:outline-none" placeholder="you@example.com" />
+                <p className="text-lg">你好，{user.displayName || user.email}！</p>
+                <p>你现在已经登录，可以同步云端数据。</p>
               </div>
-              <div>
-                <label className="block text-sm mb-1">密码</label>
-                <input value={password} onChange={e=>setPassword(e.target.value)} type="password" minLength="6" required className="w-full rounded-xl bg-white/10 border border-white/20 px-3 py-2 focus:outline-none" placeholder="至少6位" />
-              </div>
-            </>
-          )}
-          {mode === 'forgotPassword' && (
-             <div>
-                <label className="block text-sm mb-1">请输入您的注册邮箱</label>
-                <input value={email} onChange={e=>setEmail(e.target.value)} type="email" required className="w-full rounded-xl bg-white/10 border border-white/20 px-3 py-2 focus:outline-none" placeholder="you@example.com" />
-             </div>
-          )}
-
-          {error && <div className="text-sm text-rose-300">{error}</div>}
-          {message && <div className="text-sm text-emerald-300">{message}</div>}
-
-          <div className="flex flex-col pt-2 gap-2">
-            {mode !== 'forgotPassword' && (
-              <PrimaryButton type="submit">{mode==='login'?'登录':'注册'}</PrimaryButton>
+            ) : (
+              <p className="text-lg">请先登录或注册账号。</p>
             )}
-            {mode === 'login' && (
-              <button type='button' onClick={()=>setMode('forgotPassword')} className="text-xs text-white/50 hover:text-white/80">忘记密码？</button>
-            )}
-             {mode === 'forgotPassword' && (
-               <PrimaryButton type='button' onClick={handleResetPassword}>发送重置邮件</PrimaryButton>
-            )}
-            <button type="button" onClick={() => setMode(m => m === 'login' ? 'register' : 'login')} className="text-indigo-300 hover:text-indigo-200 text-sm">
-              {mode === 'login' ? '没有账号？点击注册' : (mode === 'register' ? '已有账号？点击登录' : '返回登录')}
-            </button>
-          </div>
-        </form>
+          </main>
+        </div>
       );
     }
 
-
-    // 渲染
-    const root = ReactDOM.createRoot(document.getElementById('root'));
-    root.render(<App />);
-
-    // Service Worker 注册 (保持不变)
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js')
-          .then(registration => console.log('SW registered: ', registration))
-          .catch(registrationError => console.log('SW registration failed: ', registrationError));
-      });
-    }
+    ReactDOM.render(<App />, document.getElementById("root"));
   </script>
 </body>
 </html>
-
